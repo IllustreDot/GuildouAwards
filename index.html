@@ -2,74 +2,123 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Liste de questions — Landing test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Guildou Awards — Créateur de questions</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body class="theme-void">
     <header class="site-header">
-      <div class="container">
-        <h1>QuestionBoard</h1>
-        <p class="tag">Un site de démonstration avec une liste de questions</p>
+      <div class="container header-row">
+        <div class="brand">
+          <div class="logo"><img src="img/logo-contre-soiree.png" alt="Logo Guilde" /></div>
+          <div>
+            <h1>Guildou Awards</h1>
+          </div>
+        </div>
+        <nav class="top-actions">
+          <div class="mode-toggle" role="tablist" aria-label="Mode">
+            <button id="modeAdmin" class="btn ghost active" role="tab" aria-selected="true">Admin</button>
+            <button id="modePublic" class="btn ghost" role="tab">Public</button>
+          </div>
+          <button id="logoutBtn" class="btn ghost admin-only" style="display:none">Déconnexion</button>
+          <button id="exportResponses" class="btn ghost admin-only">Exporter réponses</button>
+          <button id="exportBtn" class="btn ghost admin-only">Exporter JSON</button>
+          <label class="btn ghost admin-only" for="importFile">Importer JSON</label>
+          <input id="importFile" type="file" accept="application/json" style="display:none" />
+          <button id="clearAll" class="btn warn admin-only">Supprimer tout</button>
+        </nav>
       </div>
     </header>
 
-    <main class="container">
-      <section class="hero">
-        <h2>Trouve la réponse rapidement</h2>
-        <p>Parcourez les questions, utilisez la recherche, et développez les réponses.</p>
-        <div class="controls">
-          <input id="search" type="search" placeholder="Rechercher une question..." aria-label="Rechercher" />
-          <button id="start" class="btn">Commencer</button>
+    <main class="container layout">
+      <section class="left">
+        <div class="panel">
+          <h2>Créer / Modifier une question</h2>
+          <form id="qaForm">
+            <input type="hidden" id="q-id" />
+            <label>Question
+              <input id="q-title" type="text" placeholder="Titre de la question (ex: Qui a pull le pire boss ?)" required />
+            </label>
+
+            <label>Réponse
+              <textarea id="q-answer" placeholder="Réponse détaillée..." rows="4"></textarea>
+            </label>
+
+            <div class="row">
+              <label>Catégorie
+                <select id="q-cat">
+                  <option value="guerre">Guerre</option>
+                  <option value="raid">Raid</option>
+                  <option value="humour">Humour</option>
+                  <option value="divers">Divers</option>
+                </select>
+              </label>
+
+              <label>Nominé
+                <input id="q-nominee" type="text" placeholder="Nom du joueur" />
+              </label>
+            </div>
+
+            <div class="row">
+              <label>Importance
+                <select id="q-importance">
+                  <option value="1">1 — Faible</option>
+                  <option value="2">2</option>
+                  <option value="3">3 — Moyen</option>
+                  <option value="4">4</option>
+                  <option value="5">5 — Légendaire</option>
+                </select>
+              </label>
+
+              <div class="actions">
+                <button type="submit" class="btn">Enregistrer</button>
+                <button type="button" id="resetBtn" class="btn ghost">Réinitialiser</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel hint">
+          <h4>Astuce</h4>
+          <p>Les questions sont sauvegardées localement. Utilise l'export pour partager ou sauvegarder.</p>
         </div>
       </section>
 
-      <section class="questions">
-        <h3>Questions fréquentes</h3>
-        <ul id="questions-list">
-          <li class="qa">
-            <button class="q-title">Comment fonctionne ce site ?</button>
-            <div class="q-answer">Ceci est une page de démonstration : vous pouvez rechercher et afficher des réponses.</div>
-          </li>
-          <li class="qa">
-            <button class="q-title">Puis-je ajouter mes propres questions ?</button>
-            <div class="q-answer">Oui — dans une version complète, un formulaire permettrait d'ajouter des questions.</div>
-          </li>
-          <li class="qa">
-            <button class="q-title">Les données sont-elles sauvegardées ?</button>
-            <div class="q-answer">Sur cette démo, non — tout reste côté front-end sans persistence.</div>
-          </li>
-          <li class="qa">
-            <button class="q-title">Y a-t-il une API publique ?</button>
-            <div class="q-answer">Pas dans la démo, mais l'architecture permettrait d'en ajouter une facilement.</div>
-          </li>
-          <li class="qa">
-            <button class="q-title">Comment rechercher efficacement ?</button>
-            <div class="q-answer">Utilisez le champ de recherche en haut ; la liste se filtre en temps réel.</div>
-          </li>
-          <li class="qa">
-            <button class="q-title">Ce site est-il responsive ?</button>
-            <div class="q-answer">Oui, la mise en page s'adapte aux petits écrans.</div>
-          </li>
-        </ul>
+      <section class="right">
+        <div id="listPanel" class="panel">
+          <h2>Liste des questions</h2>
+          <input id="search" type="search" placeholder="Rechercher..." />
+          <ul id="qaList" class="qa-list"></ul>
+        </div>
+
+        <div id="previewPanel" class="panel preview">
+          <h4>Preview visuelle</h4>
+          <div class="art-placeholder">
+            <div class="orb"></div>
+            <p>Visuel placeholder — thème "void"</p>
+          </div>
+        </div>
+
+        <div id="publicPanel" class="panel public-panel" style="display:none">
+          <h2>Répondre aux questions</h2>
+          <form id="publicForm">
+            <label>Ton pseudo (optionnel)
+              <input id="respondent" type="text" placeholder="Ex: Arthas" />
+            </label>
+            <div id="surveyQuestions"></div>
+            <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+              <button type="submit" class="btn">Envoyer mes réponses</button>
+              <button type="button" id="publicReset" class="btn ghost">Réinitialiser</button>
+            </div>
+          </form>
+        </div>
       </section>
     </main>
 
     <footer class="site-footer">
-      <div class="container">© Test — QuestionBoard</div>
+      <div class="container">© Guildou Awards — Prototype</div>
     </footer>
 
     <script src="app.js"></script>
   </body>
-</html>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    
-</body>
 </html>
