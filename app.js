@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const qId = document.getElementById('q-id');
   const qTitle = document.getElementById('q-title');
   const qAnswer = document.getElementById('q-answer');
-  const qCat = document.getElementById('q-cat');
+  // category removed — no qCat
   const qNominee = document.getElementById('q-nominee');
   const qImportance = document.getElementById('q-importance');
   const resetBtn = document.getElementById('resetBtn');
@@ -37,7 +37,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
       id,
       title: qTitle.value.trim(),
       answer: qAnswer.value.trim(),
-      cat: qCat.value,
       nominee: qNominee.value.trim(),
       importance: qImportance.value
     };
@@ -61,7 +60,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
       qId.value = item.id;
       qTitle.value = item.title;
       qAnswer.value = item.answer;
-      qCat.value = item.cat;
       qNominee.value = item.nominee;
       qImportance.value = item.importance;
       window.scrollTo({top:0,behavior:'smooth'});
@@ -111,10 +109,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(listPanel) listPanel.style.display = '';
       if(previewPanel) previewPanel.style.display = '';
       publicPanel.style.display = 'none';
+      publicPanel.classList.remove('visible');
     }else{
       if(listPanel) listPanel.style.display = 'none';
       if(previewPanel) previewPanel.style.display = 'none';
       publicPanel.style.display = '';
+      publicPanel.classList.add('visible');
     }
     modeAdmin.classList.toggle('active', adminMode);
     modePublic.classList.toggle('active', !adminMode);
@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       div.innerHTML = `
         <label>${escapeHtml(it.title)}</label>
         <div class="q-input"><textarea name="q_${it.id}" placeholder="Ta réponse..." rows="2"></textarea></div>
-        <div class="qa-meta">Cat: ${escapeHtml(it.cat)} • Nominé: ${escapeHtml(it.nominee||'—')}</div>
+        <div class="qa-meta">Nominé: ${escapeHtml(it.nominee||'—')}</div>
       `;
       surveyQuestions.appendChild(div);
     });
@@ -221,11 +221,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
     items.forEach(it=>{
       const li = document.createElement('li');
       li.className = 'qa-item';
-      li.dataset.search = (it.title+' '+it.answer+' '+(it.nominee||'')+' '+it.cat).toLowerCase();
+      li.dataset.search = (it.title+' '+it.answer+' '+(it.nominee||'')).toLowerCase();
       li.innerHTML = `
         <div>
           <div style="font-weight:700;color:#fff">${escapeHtml(it.title)}</div>
-          <div class="qa-meta">${escapeHtml(it.nominee||'—')} • ${escapeHtml(it.cat)} • ★${it.importance}</div>
+          <div class="qa-meta">${escapeHtml(it.nominee||'—')} • ★${it.importance}</div>
           <div style="margin-top:8px;color:var(--muted);font-size:13px">${escapeHtml(it.answer||'')}</div>
         </div>
         <div class="qa-actions">
@@ -244,8 +244,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }catch(e){/* ignore */}
     // seed sample data
     return [
-      {id:idForNow(),title:'Qui a oublié le pull de raid ?',answer:'Le pull catastrophe du dimanche soir.',cat:'raid',nominee:'Zorg',importance:'3'},
-      {id:idForNow(),title:'Meilleure excuse pour wipe',answer:'Lag + mojo perdu',cat:'humour',nominee:'Luna',importance:'2'}
+      {id:idForNow(),title:'Qui a oublié le pull de raid ?',answer:'Le pull catastrophe du dimanche soir.',nominee:'Zorg',importance:'3'},
+      {id:idForNow(),title:'Meilleure excuse pour wipe',answer:'Lag + mojo perdu',nominee:'Luna',importance:'2'}
     ];
   }
 

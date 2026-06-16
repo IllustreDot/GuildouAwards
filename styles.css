@@ -53,6 +53,22 @@ input[type=text],input[type=search],select,textarea{width:100%;padding:10px;bord
 .survey-q label{font-weight:600;color:#fff}
 .survey-q .q-input{margin-top:8px}
 
+/* World of Warcraft — Midnight styling for public view */
+.public-panel.visible{grid-column:1 / -1;padding:28px;border-radius:14px;background:linear-gradient(180deg,#04030a,#07040c 60%);border:1px solid rgba(251,191,36,0.08);box-shadow:0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.02)}
+.public-panel.visible::before{content:'';pointer-events:none;position:absolute;left:0;right:0;top:0;height:120px;background:radial-gradient(400px 120px at 10% 10%, rgba(124,58,237,0.08), transparent);mix-blend-mode:screen}
+.public-panel{position:relative}
+.public-panel h2{color:var(--gold);font-family:Georgia,'Times New Roman',serif;letter-spacing:1px;margin-bottom:12px}
+.public-panel .survey-q{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));border-left:4px solid var(--gold);padding:14px;margin-bottom:12px}
+.public-panel .survey-q label{color:#fff;font-weight:700}
+.public-panel .q-input textarea{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.6));color:#fff}
+.public-panel .qa-meta{color:rgba(255,255,255,0.6);margin-top:8px;font-size:13px}
+.public-panel .btn{background:linear-gradient(90deg,#7c3aed,#00e5ff);color:#05060a}
+
+/* Adjust layout on small screens */
+@media (max-width:920px){
+  .public-panel.visible{padding:18px}
+}
+
 
 .site-footer{padding:18px 0;text-align:center;color:rgba(255,255,255,0.45);font-size:13px;margin-top:20px}
 
