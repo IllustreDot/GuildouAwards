@@ -10,8 +10,17 @@
   --radius:12px;
 }
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:Inter,Segoe UI,system-ui,Roboto,"Helvetica Neue",Arial;background:radial-gradient(1200px 400px at 10% 10%, rgba(124,58,237,0.07), transparent), linear-gradient(180deg,#020204,#06060b)}
-body{color:var(--muted)}
+html,body{height:100%;margin:0;font-family:Inter,Segoe UI,system-ui,Roboto,"Helvetica Neue",Arial;background:transparent}
+body{color:var(--muted);background:transparent}
+.bg-canvas-wrap{position:fixed;inset:0;z-index:-1;pointer-events:none}
+#bg{position:fixed;inset:0;z-index:-1;pointer-events:none;background:transparent}
+/* ensure main UI sits above the background */
+header, main, footer, .panel, .container, .site-header, .site-footer{position:relative;z-index:1}
+
+#bg canvas{width:100%;height:100%;display:block}
+/* fallback static gradient if JS fails */
+#bg{background:radial-gradient(600px 300px at 20% 20%, rgba(124,58,237,0.95), rgba(124,58,237,0.18) 18%, rgba(249,215,123,0.06) 55%, rgba(249,215,123,0.01) 100%)}
+
 .container{max-width:var(--maxw);margin:0 auto;padding:24px}
 .header-row{display:flex;justify-content:space-between;align-items:center}
 .brand{display:flex;gap:12px;align-items:center}
