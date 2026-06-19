@@ -40,27 +40,11 @@
               <input id="q-title" type="text" placeholder="Titre de la question (ex: Qui a pull le pire boss ?)" required />
             </label>
 
-            <label>Réponse
-              <textarea id="q-answer" placeholder="Réponse détaillée..." rows="4"></textarea>
+            <label>Options (séparées par |)
+              <input id="q-choices" type="text" placeholder="Option1 | Option2 | Option3" />
             </label>
 
             <div class="row">
-              <label style="flex:1">Nominé
-                <input id="q-nominee" type="text" placeholder="Nom du joueur" />
-              </label>
-            </div>
-
-            <div class="row">
-              <label>Importance
-                <select id="q-importance">
-                  <option value="1">1 — Faible</option>
-                  <option value="2">2</option>
-                  <option value="3">3 — Moyen</option>
-                  <option value="4">4</option>
-                  <option value="5">5 — Légendaire</option>
-                </select>
-              </label>
-
               <div class="actions">
                 <button type="submit" class="btn">Enregistrer</button>
                 <button type="button" id="resetBtn" class="btn ghost">Réinitialiser</button>

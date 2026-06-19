@@ -5,10 +5,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const form = document.getElementById('qaForm');
   const qId = document.getElementById('q-id');
   const qTitle = document.getElementById('q-title');
-  const qAnswer = document.getElementById('q-answer');
+  const qChoices = document.getElementById('q-choices');
   // category removed — no qCat
-  const qNominee = document.getElementById('q-nominee');
-  const qImportance = document.getElementById('q-importance');
   const resetBtn = document.getElementById('resetBtn');
 
   const qaList = document.getElementById('qaList');
@@ -36,9 +34,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const item = {
       id,
       title: qTitle.value.trim(),
-      answer: qAnswer.value.trim(),
-      nominee: qNominee.value.trim(),
-      importance: qImportance.value
+      // always choice-type questions
+      type: 'choice',
+      choices: (qChoices && qChoices.value) ? qChoices.value.split('|').map(s=>s.trim()).filter(Boolean) : []
     };
 
     const idx = data.findIndex(x=>x.id===id);
@@ -59,9 +57,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(!item) return;
       qId.value = item.id;
       qTitle.value = item.title;
-      qAnswer.value = item.answer;
-      qNominee.value = item.nominee;
-      qImportance.value = item.importance;
+      if(qChoices){ qChoices.value = (Array.isArray(item.choices) ? item.choices.join(' | ') : ''); }
       window.scrollTo({top:0,behavior:'smooth'});
     }
     if(del){
@@ -148,11 +144,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
     items.forEach(it=>{
       const div = document.createElement('div');
       div.className = 'survey-q';
-      div.innerHTML = `
-        <label>${escapeHtml(it.title)}</label>
-        <div class="q-input"><textarea name="q_${it.id}" placeholder="Ta réponse..." rows="2"></textarea></div>
-        <div class="qa-meta">Nominé: ${escapeHtml(it.nominee||'—')}</div>
-      `;
+      let inputHtml = '';
+      // treat as choice by default
+      if(Array.isArray(it.choices) && it.choices.length){
+        inputHtml = '<div class="q-input">' + it.choices.map((c,idx)=>{
+          return `<label class="choice-item"><input type="radio" name="q_${it.id}" value="${escapeHtml(c)}"> ${escapeHtml(c)}</label>`;
+        }).join('') + '</div>';
+      }else{
+        inputHtml = `<div class="q-input"><textarea name="q_${it.id}" placeholder="Ta réponse..." rows="2"></textarea></div>`;
+      }
+      div.innerHTML = `\n        <label>${escapeHtml(it.title)}</label>\n        ${inputHtml}\n      `;
       surveyQuestions.appendChild(div);
     });
   }
@@ -171,6 +172,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const all = loadResponses(); all.unshift(resp); saveResponses(all);
     publicForm.reset(); alert('Merci — réponses enregistrées.');
   });
+
+  // No type toggle: questions are always choice-type.
 
   publicReset.addEventListener('click', ()=>{ publicForm.reset(); });
 
@@ -221,12 +224,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
     items.forEach(it=>{
       const li = document.createElement('li');
       li.className = 'qa-item';
-      li.dataset.search = (it.title+' '+it.answer+' '+(it.nominee||'')).toLowerCase();
+      li.dataset.search = (it.title+' '+(it.type||'')+' '+(Array.isArray(it.choices)?it.choices.join(' '):'')).toLowerCase();
       li.innerHTML = `
         <div>
           <div style="font-weight:700;color:#fff">${escapeHtml(it.title)}</div>
-          <div class="qa-meta">${escapeHtml(it.nominee||'—')} • ★${it.importance}</div>
-          <div style="margin-top:8px;color:var(--muted);font-size:13px">${escapeHtml(it.answer||'')}</div>
+          <div style="margin-top:8px;color:var(--muted);font-size:13px">${escapeHtml((Array.isArray(it.choices)?it.choices.join(' | '):''))}</div>
         </div>
         <div class="qa-actions">
           <button data-edit="${it.id}">Éditer</button>
@@ -244,8 +246,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }catch(e){/* ignore */}
     // seed sample data
     return [
-      {id:idForNow(),title:'Qui a oublié le pull de raid ?',answer:'Le pull catastrophe du dimanche soir.',nominee:'Zorg',importance:'3'},
-      {id:idForNow(),title:'Meilleure excuse pour wipe',answer:'Lag + mojo perdu',nominee:'Luna',importance:'2'}
+      {id:idForNow(),title:'Qui a oublié le pull de raid ?',type:'choice',choices:['Le pull catastrophe du dimanche soir.','Personne']},
+      {id:idForNow(),title:'Meilleure excuse pour wipe',type:'choice',choices:['Lag','Erreur de strat','Autre']}
     ];
   }
 
