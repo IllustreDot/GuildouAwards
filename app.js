@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const publicPanel = document.getElementById('publicPanel');
   const listPanel = document.getElementById('listPanel');
   const hintPanel = document.querySelector('.panel.hint');
+  const layout = document.querySelector('.layout');
   const publicForm = document.getElementById('publicForm');
   const surveyQuestions = document.getElementById('surveyQuestions');
   const publicReset = document.getElementById('publicReset');
@@ -27,6 +28,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   const qMediaUrl = document.getElementById('q-media-url');
   const qMediaFile = document.getElementById('q-media-file');
+  const qMediaSelect = document.getElementById('q-media-select');
 
   // holds DataURL when a file is selected for media
   let mediaDataUrl = '';
@@ -38,6 +40,26 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   let data = loadData();
   renderList(data);
+
+  // load local image manifest (img/manifest.json) to populate selector
+  if(qMediaSelect){
+    fetch('img/manifest.json').then(r=>{
+      if(!r.ok) throw new Error('no manifest');
+      return r.json();
+    }).then(list=>{
+      if(!Array.isArray(list)) return;
+      list.forEach(fn=>{
+        const opt = document.createElement('option'); opt.value = fn; opt.textContent = fn; qMediaSelect.appendChild(opt);
+      });
+      qMediaSelect.addEventListener('change', ()=>{
+        const v = qMediaSelect.value;
+        if(v){ qMediaUrl.value = 'img/'+v; }
+      });
+    }).catch(()=>{
+      // no manifest or fetch failed, hide selector
+      qMediaSelect.style.display = 'none';
+    });
+  }
 
   form.addEventListener('submit', e=>{
     e.preventDefault();
@@ -179,12 +201,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(hintPanel) hintPanel.style.display = 'none';
       publicPanel.style.display = 'none';
       publicPanel.classList.remove('visible');
+      if(layout) layout.classList.remove('public-open');
     }else{
       if(listPanel) listPanel.style.display = 'none';
       // hint visible in public mode
       if(hintPanel) hintPanel.style.display = '';
       publicPanel.style.display = '';
       publicPanel.classList.add('visible');
+      if(layout) layout.classList.add('public-open');
     }
     modeAdmin.classList.toggle('active', adminMode);
     modePublic.classList.toggle('active', !adminMode);
@@ -194,6 +218,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
     // render survey when entering public mode
     if(!adminMode) renderPublicSurvey(data);
+    // adjust spacing after mode change
+    requestAnimationFrame(adjustPublicPanelSpacing);
   }
 
   modeAdmin.addEventListener('click', ()=>{
@@ -237,17 +263,37 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(it.media && it.media.src){
         const mediaWrap = document.createElement('div');
         mediaWrap.className = 'survey-media';
-        if(it.media.type==='video' || (it.media.src.indexOf('video/')>-1)){
+        if(it.media.type === 'youtube'){
+          const embed = youtubeEmbedUrl(it.media.src);
+          if(embed){
+            const iframe = document.createElement('iframe');
+            iframe.src = embed; iframe.width = '100%'; iframe.height = '100%'; iframe.frameBorder = '0'; iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'; iframe.allowFullscreen = true;
+            mediaWrap.appendChild(iframe);
+          }else{
+            const link = document.createElement('a'); link.href = it.media.src; link.textContent = 'Voir la vidéo'; link.target = '_blank'; mediaWrap.appendChild(link);
+          }
+        }else if(it.media.type==='video' || (it.media.src.indexOf('video/')>-1)){
           const v = document.createElement('video');
           v.controls = true; v.src = it.media.src; mediaWrap.appendChild(v);
         }else{
-          const img = document.createElement('img'); img.src = it.media.src; img.alt = it.title || 'media'; mediaWrap.appendChild(img);
+          const img = document.createElement('img');
+          img.src = normalizeImageUrl(it.media.src);
+          img.alt = it.title || 'media';
+          mediaWrap.appendChild(img);
         }
         div.appendChild(mediaWrap);
+        // if media needs to load, attach listeners to adjust spacing when loaded
+        const mediaEl = mediaWrap.querySelector('img,video,iframe');
+        if(mediaEl){
+          mediaEl.addEventListener('load', adjustPublicPanelSpacing);
+          mediaEl.addEventListener('loadedmetadata', adjustPublicPanelSpacing);
+        }
       }
 
       surveyQuestions.appendChild(div);
     });
+    // adjust spacing after rendering
+    requestAnimationFrame(adjustPublicPanelSpacing);
   }
 
   publicForm.addEventListener('submit', (e)=>{
@@ -390,6 +436,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if(mime.indexOf('image/')===0) return 'image';
         return null;
       }
+      const lower = src.toLowerCase();
+      // Youtube links
+      if(lower.indexOf('youtube.com') !== -1 || lower.indexOf('youtu.be') !== -1) return 'youtube';
+      // Imgur pages should be treated as images
+      if(lower.indexOf('imgur.com') !== -1) return 'image';
       const u = src.split('?')[0].toLowerCase();
       const ext = u.split('.').pop();
       const videoExt = ['mp4','webm','ogg','mov','m4v','mkv'];
@@ -399,6 +450,74 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }catch(e){}
     return null;
   }
+
+  // Normalize image URLs (handle Imgur page URLs -> i.imgur.com direct links)
+  function normalizeImageUrl(src){
+    if(!src) return src;
+    try{
+      const u = new URL(src, window.location.href);
+      const host = u.hostname.toLowerCase();
+      if(host.indexOf('imgur.com') !== -1 && host.indexOf('i.imgur.com') === -1){
+        // path like /gallery/ID or /a/ID or /ID
+        const parts = u.pathname.split('/').filter(Boolean);
+        if(parts.length){
+          const last = parts[parts.length-1];
+          // if last contains a dot, assume direct filename
+          if(last.indexOf('.') !== -1) return src;
+          // default to jpg for Imgur page links
+          return 'https://i.imgur.com/' + last + '.jpg';
+        }
+      }
+    }catch(e){}
+    return src;
+  }
+
+  // Convert YouTube url to embed URL
+  function youtubeEmbedUrl(src){
+    if(!src) return null;
+    try{
+      // examples: https://www.youtube.com/watch?v=ID, https://youtu.be/ID
+      const u = new URL(src, window.location.href);
+      let id = '';
+      if(u.hostname.indexOf('youtu.be') !== -1){
+        id = u.pathname.slice(1);
+      }else if(u.hostname.indexOf('youtube.com') !== -1){
+        id = u.searchParams.get('v') || '';
+        if(!id){
+          // check for /embed/ID
+          const parts = u.pathname.split('/');
+          const idx = parts.indexOf('embed');
+          if(idx !== -1 && parts[idx+1]) id = parts[idx+1];
+        }
+      }
+      if(!id) return null;
+      return 'https://www.youtube.com/embed/' + encodeURIComponent(id) + '?rel=0';
+    }catch(e){return null;}
+  }
+
+  // Adjust bottom spacing so footer doesn't overlap publicPanel
+  function adjustPublicPanelSpacing(){
+    try{
+      if(!layout) return;
+      if(publicPanel && publicPanel.classList.contains('visible')){
+        // compute height and header offset
+        const header = document.querySelector('.site-header');
+        const headerH = header ? header.offsetHeight : 0;
+        const rect = publicPanel.getBoundingClientRect();
+        const h = Math.max(rect.height, publicPanel.offsetHeight || 0);
+        // position panel below header
+        publicPanel.style.top = (headerH + 20) + 'px';
+        // ensure layout has enough bottom padding (panel height + margin)
+        layout.style.paddingBottom = (h + headerH + 40) + 'px';
+      }else{
+        layout.style.paddingBottom = '';
+        if(publicPanel) publicPanel.style.top = '';
+      }
+    }catch(e){}
+  }
+
+  // recalc on resize
+  window.addEventListener('resize', adjustPublicPanelSpacing);
 
   function escapeHtml(s){ if(!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 });

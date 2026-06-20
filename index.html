@@ -51,6 +51,12 @@
               <input id="q-media-url" type="text" placeholder="https://... ou data:..." />
             </label>
 
+            <label>Choisir une image depuis le dossier `img/` (facultatif)
+              <select id="q-media-select">
+                <option value="">-- Aucune --</option>
+              </select>
+            </label>
+
             <label>Ou importer un fichier (image / vidéo)
               <input id="q-media-file" type="file" accept="image/*,video/*" />
             </label>
@@ -102,5 +108,6 @@
     <script src="app.js"></script>
     <script src="https://unpkg.com/three@0.154.0/build/three.min.js"></script>
     <script src="bg.js"></script>
+    <script src="cursor.js"></script>
   </body>
 </html>
