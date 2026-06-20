@@ -17,13 +17,24 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const modePublic = document.getElementById('modePublic');
   const publicPanel = document.getElementById('publicPanel');
   const listPanel = document.getElementById('listPanel');
-  const previewPanel = document.getElementById('previewPanel');
+  const hintPanel = document.querySelector('.panel.hint');
   const publicForm = document.getElementById('publicForm');
   const surveyQuestions = document.getElementById('surveyQuestions');
   const publicReset = document.getElementById('publicReset');
   const logoutBtn = document.getElementById('logoutBtn');
   const importFile = document.getElementById('importFile');
   const clearAll = document.getElementById('clearAll');
+
+  const qMediaUrl = document.getElementById('q-media-url');
+  const qMediaFile = document.getElementById('q-media-file');
+
+  // holds DataURL when a file is selected for media
+  let mediaDataUrl = '';
+  // original file size when reading a file (bytes)
+  let mediaFileSize = 0;
+  // limits
+  const MAX_MEDIA_BYTES = 10 * 1024 * 1024; // 10 MB
+  const MAX_DATAURL_CHARS = 14 * 1024 * 1024; // conservative char length for data URLs
 
   let data = loadData();
   renderList(data);
@@ -38,12 +49,60 @@ document.addEventListener('DOMContentLoaded', ()=>{
       type: 'choice',
       choices: (qChoices && qChoices.value) ? qChoices.value.split('|').map(s=>s.trim()).filter(Boolean) : []
     };
+    // attach media if provided (auto-detect type) with size guards
+    let mediaSrc = (mediaDataUrl && mediaDataUrl.length) ? mediaDataUrl : (qMediaUrl && qMediaUrl.value ? qMediaUrl.value.trim() : '');
+    if(mediaSrc){
+      // if it's a data URL, estimate size from original file size when available or from base64 length
+      let approxBytes = mediaFileSize || 0;
+      if(!approxBytes && mediaSrc.indexOf('data:')===0){
+        const comma = mediaSrc.indexOf(',');
+        if(comma>-1){ approxBytes = Math.floor((mediaSrc.length - comma - 1) * 3 / 4); }
+      }
+      if(approxBytes > MAX_MEDIA_BYTES || mediaSrc.length > MAX_DATAURL_CHARS){
+        alert('Le media est trop volumineux pour être stocké localement (limite 5MB). Utilise une URL externe ou enlève le media.');
+        mediaSrc = '';
+      }
+    }
+    const mediaTypeDetected = detectMediaType(mediaSrc);
+    if(mediaTypeDetected && mediaSrc) item.media = {type: mediaTypeDetected, src: mediaSrc};
 
     const idx = data.findIndex(x=>x.id===id);
     if(idx>=0) data[idx]=item; else data.unshift(item);
-    saveData(data);
-    renderList(data);
+    // try saving, handle quota errors gracefully
+    try{
+      saveData(data);
+      renderList(data);
+    }catch(err){
+      // localStorage quota exceeded -> try removing media and retry
+      if(err && (err.name === 'QuotaExceededError' || err.code === 22 || err.code === 1014)){
+        if(item && item.media){
+          delete item.media;
+          try{ saveData(data); renderList(data); alert('Espace de stockage insuffisant : le media a été retiré de la question avant sauvegarde.'); }
+          catch(e){
+            // still failing - rollback
+            data = data.filter(x=>x.id!==id);
+            renderList(data);
+            alert('Impossible de sauvegarder la question en raison d\'un quota de stockage. Veuillez exporter/vider des données existantes.');
+          }
+        }else{
+          // no media to remove, rollback
+          data = data.filter(x=>x.id!==id);
+          renderList(data);
+          alert('Impossible de sauvegarder la question en raison d\'un quota de stockage. Veuillez exporter/vider des données existantes.');
+        }
+      }else{
+        throw err;
+      }
+    }
+    // reset search filter so newly added/edited item is visible
+    if(search){ search.value = ''; search.dispatchEvent(new Event('input')); }
+    // ensure list panel is visible for admins
+    if(isAdmin() && listPanel) listPanel.style.display = '';
     form.reset(); qId.value='';
+    // reset media inputs/state
+    mediaDataUrl = '';
+    if(qMediaUrl) qMediaUrl.value = '';
+    if(qMediaFile) qMediaFile.value = '';
   });
 
   resetBtn.addEventListener('click', ()=>{ form.reset(); qId.value=''; });
@@ -58,6 +117,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
       qId.value = item.id;
       qTitle.value = item.title;
       if(qChoices){ qChoices.value = (Array.isArray(item.choices) ? item.choices.join(' | ') : ''); }
+      // populate media fields when editing
+      if(item.media){
+        if(item.media.src && item.media.src.indexOf('data:')===0){
+          mediaDataUrl = item.media.src;
+          if(qMediaUrl) qMediaUrl.value = '';
+        }else{
+          if(qMediaUrl) qMediaUrl.value = item.media.src || '';
+          mediaDataUrl = '';
+        }
+      }else{
+        if(qMediaUrl) qMediaUrl.value = '';
+        mediaDataUrl = '';
+      }
       window.scrollTo({top:0,behavior:'smooth'});
     }
     if(del){
@@ -103,12 +175,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
     // Right column: show list + preview for admin, show public panel for public
     if(adminMode){
       if(listPanel) listPanel.style.display = '';
-      if(previewPanel) previewPanel.style.display = '';
+      // hide hint when in admin mode
+      if(hintPanel) hintPanel.style.display = 'none';
       publicPanel.style.display = 'none';
       publicPanel.classList.remove('visible');
     }else{
       if(listPanel) listPanel.style.display = 'none';
-      if(previewPanel) previewPanel.style.display = 'none';
+      // hint visible in public mode
+      if(hintPanel) hintPanel.style.display = '';
       publicPanel.style.display = '';
       publicPanel.classList.add('visible');
     }
@@ -144,8 +218,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
     items.forEach(it=>{
       const div = document.createElement('div');
       div.className = 'survey-q';
+
+      const left = document.createElement('div');
+      left.className = 'survey-content';
       let inputHtml = '';
-      // treat as choice by default
       if(Array.isArray(it.choices) && it.choices.length){
         inputHtml = '<div class="q-input">' + it.choices.map((c,idx)=>{
           return `<label class="choice-item"><input type="radio" name="q_${it.id}" value="${escapeHtml(c)}"> ${escapeHtml(c)}</label>`;
@@ -153,7 +229,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
       }else{
         inputHtml = `<div class="q-input"><textarea name="q_${it.id}" placeholder="Ta réponse..." rows="2"></textarea></div>`;
       }
-      div.innerHTML = `\n        <label>${escapeHtml(it.title)}</label>\n        ${inputHtml}\n      `;
+      left.innerHTML = `\n        <label>${escapeHtml(it.title)}</label>\n        ${inputHtml}\n      `;
+
+      div.appendChild(left);
+
+      // media column on the right
+      if(it.media && it.media.src){
+        const mediaWrap = document.createElement('div');
+        mediaWrap.className = 'survey-media';
+        if(it.media.type==='video' || (it.media.src.indexOf('video/')>-1)){
+          const v = document.createElement('video');
+          v.controls = true; v.src = it.media.src; mediaWrap.appendChild(v);
+        }else{
+          const img = document.createElement('img'); img.src = it.media.src; img.alt = it.title || 'media'; mediaWrap.appendChild(img);
+        }
+        div.appendChild(mediaWrap);
+      }
+
       surveyQuestions.appendChild(div);
     });
   }
@@ -199,7 +291,21 @@ document.addEventListener('DOMContentLoaded', ()=>{
       try{
         const imported = JSON.parse(reader.result);
         if(!Array.isArray(imported)) throw new Error('Format invalide');
-        data = imported.concat(data);
+        // ensure imported items have media.type detected when missing
+        const normalized = imported.map(it=>{
+          try{
+            if(it && it.media && it.media.src){
+              // detect type if missing
+              if(!it.media.type) it.media.type = detectMediaType(it.media.src) || null;
+              // protect against huge data URLs in imports
+              if(it.media.src.indexOf('data:')===0 && it.media.src.length > MAX_DATAURL_CHARS){
+                it.media = null;
+              }
+            }
+          }catch(e){}
+          return it;
+        });
+        data = normalized.concat(data);
         saveData(data);
         renderList(data);
         importFile.value='';
@@ -207,6 +313,25 @@ document.addEventListener('DOMContentLoaded', ()=>{
     };
     reader.readAsText(f);
   });
+
+  // read selected media file to DataURL with size guard
+  if(qMediaFile){
+    qMediaFile.addEventListener('change', (ev)=>{
+      const f = ev.target.files && ev.target.files[0];
+      if(!f) { mediaDataUrl=''; mediaFileSize = 0; return; }
+      if(f.size > MAX_MEDIA_BYTES){
+        alert('Fichier trop volumineux (limite 5MB). Choisis un fichier plus petit ou utilise une URL externe.');
+        qMediaFile.value = '';
+        mediaDataUrl = '';
+        mediaFileSize = 0;
+        return;
+      }
+      mediaFileSize = f.size;
+      const reader = new FileReader();
+      reader.onload = ()=>{ mediaDataUrl = reader.result.toString(); };
+      reader.readAsDataURL(f);
+    });
+  }
 
   clearAll.addEventListener('click', ()=>{
     if(!confirm('Supprimer toutes les questions ?')) return;
@@ -254,6 +379,26 @@ document.addEventListener('DOMContentLoaded', ()=>{
   function saveData(d){ localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
 
   function idForNow(){ return 'id_'+Math.random().toString(36).slice(2,9); }
+
+  // detect whether a source is an image or video (basic heuristic)
+  function detectMediaType(src){
+    if(!src) return null;
+    try{
+      if(src.indexOf('data:')===0){
+        const mime = src.split(':')[1].split(';')[0];
+        if(mime.indexOf('video/')===0) return 'video';
+        if(mime.indexOf('image/')===0) return 'image';
+        return null;
+      }
+      const u = src.split('?')[0].toLowerCase();
+      const ext = u.split('.').pop();
+      const videoExt = ['mp4','webm','ogg','mov','m4v','mkv'];
+      const imageExt = ['png','jpg','jpeg','gif','webp','avif','svg'];
+      if(videoExt.indexOf(ext) !== -1) return 'video';
+      if(imageExt.indexOf(ext) !== -1) return 'image';
+    }catch(e){}
+    return null;
+  }
 
   function escapeHtml(s){ if(!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 });

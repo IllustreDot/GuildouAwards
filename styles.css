@@ -73,9 +73,17 @@ input[type=text],input[type=search],select,textarea{width:100%;padding:10px;bord
 .public-panel .qa-meta{color:rgba(255,255,255,0.6);margin-top:8px;font-size:13px}
 .public-panel .btn{background:linear-gradient(90deg,#7c3aed,#00e5ff);color:#05060a}
 
+/* Layout for each survey question: content + optional media on right */
+.survey-q{display:flex;gap:14px;align-items:flex-start}
+.survey-content{flex:1}
+.survey-media{flex:0 0 240px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);display:flex;align-items:center;justify-content:center;padding:6px}
+.survey-media img,.survey-media video{width:100%;height:auto;display:block;border-radius:8px}
+
 /* Adjust layout on small screens */
 @media (max-width:920px){
   .public-panel.visible{padding:18px}
+  .survey-q{flex-direction:column}
+  .survey-media{flex:1 1 auto;width:100%}
 }
 
 
