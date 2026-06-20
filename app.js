@@ -29,6 +29,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const qMediaUrl = document.getElementById('q-media-url');
   const qMediaFile = document.getElementById('q-media-file');
   const qMediaSelect = document.getElementById('q-media-select');
+  const optionsContainer = document.getElementById('optionsContainer');
+  const addOptionBtn = document.getElementById('addOptionBtn');
 
   // holds DataURL when a file is selected for media
   let mediaDataUrl = '';
@@ -61,6 +63,27 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   }
 
+  // option editor helpers (advanced options)
+  function createOptionRow(opt){
+    const row = document.createElement('div'); row.className = 'option-row';
+    const txt = document.createElement('input'); txt.type='text'; txt.placeholder="Texte de l'option"; txt.value = (opt && opt.text) ? opt.text : ''; txt.name='opt-text';
+    const mediaUrl = document.createElement('input'); mediaUrl.type='text'; mediaUrl.placeholder='URL media (ou sélectionner)'; mediaUrl.style.width='240px'; mediaUrl.value = (opt && opt.media && opt.media.src) ? opt.media.src : ''; mediaUrl.name='opt-media';
+    const remove = document.createElement('button'); remove.type='button'; remove.className='remove-opt'; remove.textContent='Supprimer';
+    const mediaHidden = document.createElement('input'); mediaHidden.type='hidden';
+
+    remove.addEventListener('click', ()=>{ row.remove(); });
+
+    const mediaSelectLocal = document.createElement('select'); mediaSelectLocal.style.marginLeft='6px'; mediaSelectLocal.innerHTML = '<option value="">--img local--</option>';
+    fetch('img/manifest.json').then(r=>r.json()).then(list=>{ if(Array.isArray(list)) list.forEach(fn=>{ const o=document.createElement('option'); o.value='img/'+fn; o.textContent=fn; mediaSelectLocal.appendChild(o); }); }).catch(()=>{});
+    mediaSelectLocal.addEventListener('change', ()=>{ if(mediaSelectLocal.value){ mediaUrl.value = mediaSelectLocal.value; mediaHidden.value=''; } });
+
+    const mediaWrap = document.createElement('div'); mediaWrap.className='opt-media'; mediaWrap.appendChild(mediaUrl); mediaWrap.appendChild(mediaSelectLocal);
+    // append in order: text, media controls, remove button, hidden
+    row.appendChild(txt); row.appendChild(mediaWrap); row.appendChild(remove); row.appendChild(mediaHidden);
+    return row;
+  }
+  if(addOptionBtn){ addOptionBtn.addEventListener('click', ()=>{ const r = createOptionRow(null); optionsContainer.appendChild(r); }); }
+
   form.addEventListener('submit', e=>{
     e.preventDefault();
     const id = qId.value || idForNow();
@@ -87,6 +110,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
     const mediaTypeDetected = detectMediaType(mediaSrc);
     if(mediaTypeDetected && mediaSrc) item.media = {type: mediaTypeDetected, src: mediaSrc};
+
+    // advanced per-option editor: if options are present, build structured choices
+    if(optionsContainer && optionsContainer.children.length){
+      const opts = [];
+      Array.from(optionsContainer.children).forEach(row=>{
+        const txtInputs = row.querySelectorAll('input[type=text]');
+        const text = (txtInputs && txtInputs[0]) ? txtInputs[0].value.trim() : '';
+        const mediaHidden = (row.querySelector('input[type=hidden]')||{value:''}).value || '';
+        const mediaUrlVal = (txtInputs && txtInputs[1]) ? (txtInputs[1].value.trim() || '') : '';
+        let mediaSrcOpt = mediaHidden || mediaUrlVal || '';
+        if(mediaSrcOpt) mediaSrcOpt = normalizeImageUrl(mediaSrcOpt);
+        const mtype = detectMediaType(mediaSrcOpt);
+        opts.push({text, media: mediaSrcOpt ? {type: mtype, src: mediaSrcOpt} : null});
+      });
+      if(opts.length) item.choices = opts;
+    }
 
     const idx = data.findIndex(x=>x.id===id);
     if(idx>=0) data[idx]=item; else data.unshift(item);
@@ -138,20 +177,21 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(!item) return;
       qId.value = item.id;
       qTitle.value = item.title;
-      if(qChoices){ qChoices.value = (Array.isArray(item.choices) ? item.choices.join(' | ') : ''); }
-      // populate media fields when editing
-      if(item.media){
-        if(item.media.src && item.media.src.indexOf('data:')===0){
-          mediaDataUrl = item.media.src;
-          if(qMediaUrl) qMediaUrl.value = '';
+      // clear advanced options
+      if(optionsContainer) optionsContainer.innerHTML = '';
+      if(Array.isArray(item.choices) && item.choices.length){
+        if(typeof item.choices[0] === 'string'){
+          if(qChoices) qChoices.value = item.choices.join(' | ');
         }else{
-          if(qMediaUrl) qMediaUrl.value = item.media.src || '';
-          mediaDataUrl = '';
+          if(qChoices) qChoices.value = '';
+          item.choices.forEach(c=>{ const r = createOptionRow(c); optionsContainer.appendChild(r); });
         }
-      }else{
-        if(qMediaUrl) qMediaUrl.value = '';
-        mediaDataUrl = '';
       }
+      // populate media fields when editing (question-level media)
+      if(item.media){
+        if(item.media.src && item.media.src.indexOf('data:')===0){ mediaDataUrl = item.media.src; if(qMediaUrl) qMediaUrl.value = ''; }
+        else{ if(qMediaUrl) qMediaUrl.value = item.media.src || ''; mediaDataUrl = ''; }
+      }else{ if(qMediaUrl) qMediaUrl.value = ''; mediaDataUrl = ''; }
       window.scrollTo({top:0,behavior:'smooth'});
     }
     if(del){
@@ -249,9 +289,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
       left.className = 'survey-content';
       let inputHtml = '';
       if(Array.isArray(it.choices) && it.choices.length){
-        inputHtml = '<div class="q-input">' + it.choices.map((c,idx)=>{
-          return `<label class="choice-item"><input type="radio" name="q_${it.id}" value="${escapeHtml(c)}"> ${escapeHtml(c)}</label>`;
-        }).join('') + '</div>';
+        // structured choices with media
+        if(typeof it.choices[0] === 'object'){
+          inputHtml = '<div class="q-input">' + it.choices.map((c,idx)=>{
+            return `<label class="choice-item"><input type="radio" name="q_${it.id}" value="${idx}"> ${escapeHtml(c.text)}</label>`;
+          }).join('') + '</div>';
+        }else{
+          inputHtml = '<div class="q-input">' + it.choices.map((c,idx)=>{
+            return `<label class="choice-item"><input type="radio" name="q_${it.id}" value="${escapeHtml(c)}"> ${escapeHtml(c)}</label>`;
+          }).join('') + '</div>';
+        }
       }else{
         inputHtml = `<div class="q-input"><textarea name="q_${it.id}" placeholder="Ta réponse..." rows="2"></textarea></div>`;
       }
@@ -259,34 +306,74 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
       div.appendChild(left);
 
-      // media column on the right
-      if(it.media && it.media.src){
-        const mediaWrap = document.createElement('div');
-        mediaWrap.className = 'survey-media';
-        if(it.media.type === 'youtube'){
-          const embed = youtubeEmbedUrl(it.media.src);
-          if(embed){
-            const iframe = document.createElement('iframe');
-            iframe.src = embed; iframe.width = '100%'; iframe.height = '100%'; iframe.frameBorder = '0'; iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'; iframe.allowFullscreen = true;
-            mediaWrap.appendChild(iframe);
-          }else{
-            const link = document.createElement('a'); link.href = it.media.src; link.textContent = 'Voir la vidéo'; link.target = '_blank'; mediaWrap.appendChild(link);
-          }
-        }else if(it.media.type==='video' || (it.media.src.indexOf('video/')>-1)){
-          const v = document.createElement('video');
-          v.controls = true; v.src = it.media.src; mediaWrap.appendChild(v);
-        }else{
-          const img = document.createElement('img');
-          img.src = normalizeImageUrl(it.media.src);
-          img.alt = it.title || 'media';
-          mediaWrap.appendChild(img);
+      // if choices are objects with media, build a slider of option media
+      if(Array.isArray(it.choices) && it.choices.length && typeof it.choices[0] === 'object'){
+        const slides = [];
+        it.choices.forEach((c, idx)=>{ if(c.media && c.media.src){ slides.push({idx, src:c.media.src, type:c.media.type, caption:c.text}); } });
+        if(slides.length){
+          const slider = document.createElement('div'); slider.className = 'slider';
+          const slidesWrap = document.createElement('div'); slidesWrap.className = 'slides';
+          slides.forEach(s=>{
+            const slide = document.createElement('div'); slide.className = 'slide';
+            if(s.type==='youtube'){
+              const iframe = document.createElement('iframe'); iframe.src = youtubeEmbedUrl(s.src) || s.src; iframe.frameBorder='0'; iframe.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'; iframe.allowFullscreen=true; slide.appendChild(iframe);
+            }else if(s.type==='video' || (s.src.indexOf('video/')>-1)){
+              const v = document.createElement('video'); v.controls=true; v.src = s.src; slide.appendChild(v);
+            }else{
+              const img = document.createElement('img'); img.src = normalizeImageUrl(s.src); img.alt = s.caption || '' ; slide.appendChild(img);
+            }
+            slidesWrap.appendChild(slide);
+          });
+          slider.appendChild(slidesWrap);
+          const btnL = document.createElement('button'); btnL.type='button'; btnL.className='slider-btn left'; btnL.textContent='<';
+          const btnR = document.createElement('button'); btnR.type='button'; btnR.className='slider-btn right'; btnR.textContent='>';
+          slider.appendChild(btnL); slider.appendChild(btnR);
+          div.appendChild(slider);
+          // slider logic
+          let cur = 0; const max = slides.length;
+          // ensure slidesWrap width and each slide sizing
+          slidesWrap.style.width = (max * 100) + '%';
+          Array.from(slidesWrap.children).forEach(s=>{ s.style.flex = '0 0 100%'; });
+          slidesWrap.style.transform = 'translateX(0)';
+          function show(i){ cur = (i+max)%max; slidesWrap.style.transform = `translateX(${-cur*100}%)`; }
+          btnL.addEventListener('click', ()=>{ show(cur-1); }); btnR.addEventListener('click', ()=>{ show(cur+1); });
+          // default show first
+          show(0);
+          // when radio changes, move to corresponding slide if exists
+          left.querySelectorAll('input[type=radio]').forEach(r=>{
+            r.addEventListener('change',(ev)=>{
+              const val = ev.target.value; const idx = parseInt(val,10);
+              const sIndex = slides.findIndex(s=>s.idx===idx);
+              if(sIndex>=0) show(sIndex);
+            });
+          });
+          // attach media load listeners
+          slider.querySelectorAll('img,video,iframe').forEach(el=>{ el.addEventListener('load', adjustPublicPanelSpacing); el.addEventListener('loadedmetadata', adjustPublicPanelSpacing); });
         }
-        div.appendChild(mediaWrap);
-        // if media needs to load, attach listeners to adjust spacing when loaded
-        const mediaEl = mediaWrap.querySelector('img,video,iframe');
-        if(mediaEl){
-          mediaEl.addEventListener('load', adjustPublicPanelSpacing);
-          mediaEl.addEventListener('loadedmetadata', adjustPublicPanelSpacing);
+      }else{
+        // fallback: single question-level media
+        if(it.media && it.media.src){
+          const mediaWrap = document.createElement('div');
+          mediaWrap.className = 'survey-media';
+          if(it.media.type === 'youtube'){
+            const embed = youtubeEmbedUrl(it.media.src);
+            if(embed){
+              const iframe = document.createElement('iframe'); iframe.src = embed; iframe.width = '100%'; iframe.height = '100%'; iframe.frameBorder = '0'; iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'; iframe.allowFullscreen = true; mediaWrap.appendChild(iframe);
+            }else{
+              const link = document.createElement('a'); link.href = it.media.src; link.textContent = 'Voir la vidéo'; link.target = '_blank'; mediaWrap.appendChild(link);
+            }
+          }else if(it.media.type==='video' || (it.media.src.indexOf('video/')>-1)){
+            const v = document.createElement('video');
+            v.controls = true; v.src = it.media.src; mediaWrap.appendChild(v);
+          }else{
+            const img = document.createElement('img');
+            img.src = normalizeImageUrl(it.media.src);
+            img.alt = it.title || 'media';
+            mediaWrap.appendChild(img);
+          }
+          div.appendChild(mediaWrap);
+          const mediaEl = mediaWrap.querySelector('img,video,iframe');
+          if(mediaEl){ mediaEl.addEventListener('load', adjustPublicPanelSpacing); mediaEl.addEventListener('loadedmetadata', adjustPublicPanelSpacing); }
         }
       }
 
@@ -395,11 +482,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
     items.forEach(it=>{
       const li = document.createElement('li');
       li.className = 'qa-item';
-      li.dataset.search = (it.title+' '+(it.type||'')+' '+(Array.isArray(it.choices)?it.choices.join(' '):'')).toLowerCase();
+      const choicesText = Array.isArray(it.choices) ? (typeof it.choices[0] === 'object' ? it.choices.map(c=>c.text||'').join(' | ') : it.choices.join(' | ')) : '';
+      li.dataset.search = (it.title+' '+(it.type||'')+' '+choicesText).toLowerCase();
       li.innerHTML = `
         <div>
           <div style="font-weight:700;color:#fff">${escapeHtml(it.title)}</div>
-          <div style="margin-top:8px;color:var(--muted);font-size:13px">${escapeHtml((Array.isArray(it.choices)?it.choices.join(' | '):''))}</div>
+          <div style="margin-top:8px;color:var(--muted);font-size:13px">${escapeHtml(choicesText)}</div>
         </div>
         <div class="qa-actions">
           <button data-edit="${it.id}">Éditer</button>
