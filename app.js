@@ -52,6 +52,21 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   function setImgListStatus(message){ if(imgListStatus) imgListStatus.textContent = message; }
 
+  function normalizeImageFilename(name){
+    if(!name || typeof name !== 'string') return '';
+    let fn = name.trim().replace(/\\/g, '/').split('?')[0].split('#')[0];
+    fn = fn.replace(/^\/+/,'').replace(/^img\//i, '');
+    const parts = fn.split('/').filter(Boolean);
+    fn = parts.length ? parts[parts.length - 1] : '';
+    return fn;
+  }
+
+  function isImageFilename(name){
+    const fn = normalizeImageFilename(name);
+    const ext = fn.split('.').pop().toLowerCase();
+    return ['png','jpg','jpeg','gif','webp','avif','svg'].includes(ext);
+  }
+
   function detectGithubRepo(){
     const explicit = document.body.dataset.githubRepo;
     if(explicit){
@@ -87,14 +102,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   function parseImageListFromHtml(html){
     const matches = [...html.matchAll(/<a[^>]+href="([^"]+)"/gi)];
-    const allowedExt = ['png','jpg','jpeg','gif','webp','avif','svg'];
     const found = new Set();
     matches.forEach(match=>{
-      const href = match[1].split('?')[0].split('#')[0];
+      const rawHref = match[1];
+      const href = rawHref.split('?')[0].split('#')[0];
       if(!href || href.endsWith('/')) return;
-      const name = href.replace(/\/\//g,'').replace(/^\.\//,'');
-      const ext = name.split('.').pop().toLowerCase();
-      if(allowedExt.includes(ext)) found.add(name);
+      const filename = normalizeImageFilename(href);
+      if(isImageFilename(filename)) found.add(filename);
     });
     return Array.from(found).sort();
   }
@@ -112,14 +126,24 @@ document.addEventListener('DOMContentLoaded', ()=>{
     return fetch('img/manifest.json?t=' + Date.now(), {cache:'no-store'}).then(r=>{
       if(!r.ok) return [];
       return r.json();
-    }).then(list=> Array.isArray(list) ? list : []).catch(()=>[]);
+    }).then(list=>{
+      if(!Array.isArray(list)) return [];
+      return list.map(normalizeImageFilename).filter(name=>name && isImageFilename(name));
+    }).catch(()=>[]);
   }
 
   function refreshLocalImages(){
     setImgListStatus('Recherche des images locales...');
     return Promise.all([loadManifestImages(), loadLocalImageDir(), fetchGithubImages()]).then(results=>{
       const allImages = new Set();
-      results.forEach(list=>{ if(Array.isArray(list)) list.forEach(fn=>fn && allImages.add(fn)); });
+      results.forEach(list=>{
+        if(Array.isArray(list)){
+          list.forEach(fn=>{
+            const filename = normalizeImageFilename(fn);
+            if(filename && isImageFilename(filename)) allImages.add(filename);
+          });
+        }
+      });
       localImageList = Array.from(allImages).sort();
       updateAllLocalMediaSelects();
       if(localImageList.length){
