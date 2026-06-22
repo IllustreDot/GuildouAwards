@@ -432,11 +432,30 @@ document.addEventListener('DOMContentLoaded', ()=>{
           slides.forEach(s=>{
             const slide = document.createElement('div'); slide.className = 'slide';
             if(s.type==='youtube'){
-              const iframe = document.createElement('iframe'); iframe.src = youtubeEmbedUrl(s.src) || s.src; iframe.frameBorder='0'; iframe.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'; iframe.allowFullscreen=true; slide.appendChild(iframe);
+              const iframe = document.createElement('iframe');
+              iframe.src = youtubeEmbedUrl(s.src) || s.src;
+              iframe.frameBorder = '0';
+              iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+              iframe.allowFullscreen = true;
+              iframe.width = '100%';
+              iframe.height = '100%';
+              iframe.style.objectFit = 'contain';
+              slide.appendChild(iframe);
             }else if(s.type==='video' || (s.src.indexOf('video/')>-1)){
-              const v = document.createElement('video'); v.controls=true; v.src = s.src; slide.appendChild(v);
+              const v = document.createElement('video');
+              v.controls = true; v.src = s.src;
+              v.style.width = '100%';
+              v.style.height = '100%';
+              v.style.objectFit = 'contain';
+              slide.appendChild(v);
             }else{
-              const img = document.createElement('img'); img.src = normalizeImageUrl(s.src); img.alt = s.caption || '' ; slide.appendChild(img);
+              const img = document.createElement('img');
+              img.src = normalizeImageUrl(s.src);
+              img.alt = s.caption || '';
+              img.style.width = '100%';
+              img.style.height = '100%';
+              img.style.objectFit = 'contain';
+              slide.appendChild(img);
             }
             slidesWrap.appendChild(slide);
           });
@@ -444,7 +463,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
           const btnL = document.createElement('button'); btnL.type='button'; btnL.className='slider-btn left'; btnL.textContent='<';
           const btnR = document.createElement('button'); btnR.type='button'; btnR.className='slider-btn right'; btnR.textContent='>';
           slider.appendChild(btnL); slider.appendChild(btnR);
-          div.appendChild(slider);
+          const mediaWrap = document.createElement('div'); mediaWrap.className = 'survey-media';
+          mediaWrap.appendChild(slider);
+          div.appendChild(mediaWrap);
           // slider logic
           let cur = 0; const max = slides.length;
           // ensure slidesWrap width and each slide sizing
@@ -474,17 +495,32 @@ document.addEventListener('DOMContentLoaded', ()=>{
           if(it.media.type === 'youtube'){
             const embed = youtubeEmbedUrl(it.media.src);
             if(embed){
-              const iframe = document.createElement('iframe'); iframe.src = embed; iframe.width = '100%'; iframe.height = '100%'; iframe.frameBorder = '0'; iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'; iframe.allowFullscreen = true; mediaWrap.appendChild(iframe);
+              const iframe = document.createElement('iframe');
+              iframe.src = embed;
+              iframe.width = '100%';
+              iframe.height = '100%';
+              iframe.frameBorder = '0';
+              iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+              iframe.allowFullscreen = true;
+              iframe.style.objectFit = 'contain';
+              mediaWrap.appendChild(iframe);
             }else{
               const link = document.createElement('a'); link.href = it.media.src; link.textContent = 'Voir la vidéo'; link.target = '_blank'; mediaWrap.appendChild(link);
             }
           }else if(it.media.type==='video' || (it.media.src.indexOf('video/')>-1)){
             const v = document.createElement('video');
-            v.controls = true; v.src = it.media.src; mediaWrap.appendChild(v);
+            v.controls = true; v.src = it.media.src;
+            v.style.width = '100%';
+            v.style.height = '100%';
+            v.style.objectFit = 'contain';
+            mediaWrap.appendChild(v);
           }else{
             const img = document.createElement('img');
             img.src = normalizeImageUrl(it.media.src);
             img.alt = it.title || 'media';
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'contain';
             mediaWrap.appendChild(img);
           }
           div.appendChild(mediaWrap);
