@@ -29,8 +29,110 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const qMediaUrl = document.getElementById('q-media-url');
   const qMediaFile = document.getElementById('q-media-file');
   const qMediaSelect = document.getElementById('q-media-select');
+  const refreshImgListBtn = document.getElementById('refreshImgListBtn');
+  const imgListStatus = document.getElementById('imgListStatus');
   const optionsContainer = document.getElementById('optionsContainer');
   const addOptionBtn = document.getElementById('addOptionBtn');
+
+  let localImageList = [];
+
+  function populateSelectWithImages(select, list){
+    if(!select) return;
+    const current = select.value;
+    select.innerHTML = '<option value="">-- Aucune --</option>';
+    list.forEach(fn=>{ const opt = document.createElement('option'); opt.value = 'img/'+fn; opt.textContent = fn; select.appendChild(opt); });
+    if(current) select.value = current;
+    select.disabled = list.length === 0;
+  }
+
+  function updateAllLocalMediaSelects(){
+    if(qMediaSelect) populateSelectWithImages(qMediaSelect, localImageList);
+    document.querySelectorAll('.opt-media select').forEach(select=> populateSelectWithImages(select, localImageList));
+  }
+
+  function setImgListStatus(message){ if(imgListStatus) imgListStatus.textContent = message; }
+
+  function detectGithubRepo(){
+    const explicit = document.body.dataset.githubRepo;
+    if(explicit){
+      const parts = explicit.split('/').map(part=>part.trim()).filter(Boolean);
+      if(parts.length === 2) return {owner: parts[0], repo: parts[1]};
+    }
+    const host = window.location.hostname;
+    if(host.endsWith('.github.io')){
+      const owner = host.slice(0, -'.github.io'.length);
+      const segments = window.location.pathname.split('/').filter(Boolean);
+      const repo = segments.length ? segments[0] : owner;
+      if(owner && repo) return {owner, repo};
+    }
+    return null;
+  }
+
+  async function fetchGithubImages(){
+    const repo = detectGithubRepo();
+    if(!repo) return [];
+    for(const branch of ['main','master']){
+      try{
+        const url = `https://api.github.com/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/contents/img?ref=${branch}`;
+        const res = await fetch(url, {cache:'no-store'});
+        if(!res.ok) continue;
+        const json = await res.json();
+        if(Array.isArray(json)){
+          return json.filter(item=>item && item.type==='file' && item.name).map(item=>item.name);
+        }
+      }catch(e){}
+    }
+    return [];
+  }
+
+  function parseImageListFromHtml(html){
+    const matches = [...html.matchAll(/<a[^>]+href="([^"]+)"/gi)];
+    const allowedExt = ['png','jpg','jpeg','gif','webp','avif','svg'];
+    const found = new Set();
+    matches.forEach(match=>{
+      const href = match[1].split('?')[0].split('#')[0];
+      if(!href || href.endsWith('/')) return;
+      const name = href.replace(/\/\//g,'').replace(/^\.\//,'');
+      const ext = name.split('.').pop().toLowerCase();
+      if(allowedExt.includes(ext)) found.add(name);
+    });
+    return Array.from(found).sort();
+  }
+
+  function loadLocalImageDir(){
+    return fetch('img/', {cache:'no-store'}).then(r=>{
+      if(!r.ok) return [];
+      const contentType = r.headers.get('content-type') || '';
+      if(!contentType.includes('text/html') && !contentType.includes('application/xhtml+xml')) return [];
+      return r.text().then(text=> parseImageListFromHtml(text));
+    }).catch(()=>[]);
+  }
+
+  function loadManifestImages(){
+    return fetch('img/manifest.json?t=' + Date.now(), {cache:'no-store'}).then(r=>{
+      if(!r.ok) return [];
+      return r.json();
+    }).then(list=> Array.isArray(list) ? list : []).catch(()=>[]);
+  }
+
+  function refreshLocalImages(){
+    setImgListStatus('Recherche des images locales...');
+    return Promise.all([loadManifestImages(), loadLocalImageDir(), fetchGithubImages()]).then(results=>{
+      const allImages = new Set();
+      results.forEach(list=>{ if(Array.isArray(list)) list.forEach(fn=>fn && allImages.add(fn)); });
+      localImageList = Array.from(allImages).sort();
+      updateAllLocalMediaSelects();
+      if(localImageList.length){
+        setImgListStatus(`${localImageList.length} image${localImageList.length > 1 ? 's' : ''} locale${localImageList.length > 1 ? 's' : ''} trouvée${localImageList.length > 1 ? 's' : ''}.`);
+      }else{
+        setImgListStatus('Aucune image locale trouvée dans img/. Ajoute des fichiers ou crée un manifest.json.');
+      }
+    }).catch(()=>{
+      setImgListStatus('Impossible de charger les images locales.');
+      localImageList = [];
+      updateAllLocalMediaSelects();
+    });
+  }
 
   // holds DataURL when a file is selected for media
   let mediaDataUrl = '';
@@ -42,51 +144,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   let data = loadData();
   renderList(data);
-  // image manifest handling: central function to (re)load img/manifest.json and populate selects
-  let imageManifest = [];
 
-  function populateQMediaSelect(){
-    if(!qMediaSelect) return;
-    // keep first default option
-    qMediaSelect.innerHTML = '<option value="">-- Aucune --</option>';
-    imageManifest.forEach(fn=>{ const opt = document.createElement('option'); opt.value = fn; opt.textContent = fn; qMediaSelect.appendChild(opt); });
-  }
-
-  function populateMediaSelect(selectEl){
-    if(!selectEl) return;
-    selectEl.innerHTML = '<option value="">--img local--</option>';
-    imageManifest.forEach(fn=>{ const o = document.createElement('option'); o.value = 'img/'+fn; o.textContent = fn; selectEl.appendChild(o); });
-  }
-
-  function loadImageManifest(force){
-    const url = 'img/manifest.json' + (force ? ('?t=' + Date.now()) : '');
-    return fetch(url).then(r=>{ if(!r.ok) throw new Error('no manifest'); return r.json(); }).then(list=>{
-      if(!Array.isArray(list)) list = [];
-      imageManifest = list;
-      populateQMediaSelect();
-      // update any per-option selects
-      document.querySelectorAll('select.media-select-local').forEach(s=>populateMediaSelect(s));
-    }).catch(()=>{
-      if(qMediaSelect) qMediaSelect.style.display = 'none';
+  // load local image list from manifest or GitHub when possible
+  if(qMediaSelect){
+    refreshLocalImages();
+    qMediaSelect.addEventListener('change', ()=>{
+      const v = qMediaSelect.value;
+      if(v){ qMediaUrl.value = v; }
     });
-  }
-
-  // initial load
-  if(qMediaSelect) loadImageManifest();
-  if(qMediaSelect) qMediaSelect.addEventListener('change', ()=>{ const v = qMediaSelect.value; if(v){ qMediaUrl.value = 'img/'+v; } });
-
-  // refresh button
-  const qMediaRefresh = document.getElementById('q-media-refresh');
-  if(qMediaRefresh){
-    qMediaRefresh.addEventListener('click', ()=>{
-      loadImageManifest(true).then(()=>{
-        console.log('image manifest reloaded', imageManifest);
-        alert('Manifest d\'images rechargé (' + (imageManifest.length) + ' fichiers)');
-      }).catch(()=>{
-        console.error('failed to reload manifest');
-        alert('Impossible de recharger le manifest d\'images. Vérifiez la console et le fichier img/manifest.json');
-      });
-    });
+    if(refreshImgListBtn){ refreshImgListBtn.addEventListener('click', refreshLocalImages); }
   }
 
   // option editor helpers (advanced options)
@@ -99,8 +165,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
     remove.addEventListener('click', ()=>{ row.remove(); });
 
-    const mediaSelectLocal = document.createElement('select'); mediaSelectLocal.style.marginLeft='6px'; mediaSelectLocal.className = 'media-select-local'; mediaSelectLocal.innerHTML = '<option value="">--img local--</option>';
-    populateMediaSelect(mediaSelectLocal);
+    const mediaSelectLocal = document.createElement('select'); mediaSelectLocal.style.marginLeft='6px';
+    populateSelectWithImages(mediaSelectLocal, localImageList);
     mediaSelectLocal.addEventListener('change', ()=>{ if(mediaSelectLocal.value){ mediaUrl.value = mediaSelectLocal.value; mediaHidden.value=''; } });
 
     const mediaWrap = document.createElement('div'); mediaWrap.className='opt-media'; mediaWrap.appendChild(mediaUrl); mediaWrap.appendChild(mediaSelectLocal);

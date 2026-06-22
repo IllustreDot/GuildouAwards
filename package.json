@@ -1,8 +1,0 @@
-{
-  "name": "guildou-awards",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "manifest": "node generate-manifest.js"
-  }
-}
