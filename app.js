@@ -42,24 +42,50 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   let data = loadData();
   renderList(data);
+  // image manifest handling: central function to (re)load img/manifest.json and populate selects
+  let imageManifest = [];
 
-  // load local image manifest (img/manifest.json) to populate selector
-  if(qMediaSelect){
-    fetch('img/manifest.json').then(r=>{
-      if(!r.ok) throw new Error('no manifest');
-      return r.json();
-    }).then(list=>{
-      if(!Array.isArray(list)) return;
-      list.forEach(fn=>{
-        const opt = document.createElement('option'); opt.value = fn; opt.textContent = fn; qMediaSelect.appendChild(opt);
-      });
-      qMediaSelect.addEventListener('change', ()=>{
-        const v = qMediaSelect.value;
-        if(v){ qMediaUrl.value = 'img/'+v; }
-      });
+  function populateQMediaSelect(){
+    if(!qMediaSelect) return;
+    // keep first default option
+    qMediaSelect.innerHTML = '<option value="">-- Aucune --</option>';
+    imageManifest.forEach(fn=>{ const opt = document.createElement('option'); opt.value = fn; opt.textContent = fn; qMediaSelect.appendChild(opt); });
+  }
+
+  function populateMediaSelect(selectEl){
+    if(!selectEl) return;
+    selectEl.innerHTML = '<option value="">--img local--</option>';
+    imageManifest.forEach(fn=>{ const o = document.createElement('option'); o.value = 'img/'+fn; o.textContent = fn; selectEl.appendChild(o); });
+  }
+
+  function loadImageManifest(force){
+    const url = 'img/manifest.json' + (force ? ('?t=' + Date.now()) : '');
+    return fetch(url).then(r=>{ if(!r.ok) throw new Error('no manifest'); return r.json(); }).then(list=>{
+      if(!Array.isArray(list)) list = [];
+      imageManifest = list;
+      populateQMediaSelect();
+      // update any per-option selects
+      document.querySelectorAll('select.media-select-local').forEach(s=>populateMediaSelect(s));
     }).catch(()=>{
-      // no manifest or fetch failed, hide selector
-      qMediaSelect.style.display = 'none';
+      if(qMediaSelect) qMediaSelect.style.display = 'none';
+    });
+  }
+
+  // initial load
+  if(qMediaSelect) loadImageManifest();
+  if(qMediaSelect) qMediaSelect.addEventListener('change', ()=>{ const v = qMediaSelect.value; if(v){ qMediaUrl.value = 'img/'+v; } });
+
+  // refresh button
+  const qMediaRefresh = document.getElementById('q-media-refresh');
+  if(qMediaRefresh){
+    qMediaRefresh.addEventListener('click', ()=>{
+      loadImageManifest(true).then(()=>{
+        console.log('image manifest reloaded', imageManifest);
+        alert('Manifest d\'images rechargé (' + (imageManifest.length) + ' fichiers)');
+      }).catch(()=>{
+        console.error('failed to reload manifest');
+        alert('Impossible de recharger le manifest d\'images. Vérifiez la console et le fichier img/manifest.json');
+      });
     });
   }
 
@@ -73,8 +99,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
     remove.addEventListener('click', ()=>{ row.remove(); });
 
-    const mediaSelectLocal = document.createElement('select'); mediaSelectLocal.style.marginLeft='6px'; mediaSelectLocal.innerHTML = '<option value="">--img local--</option>';
-    fetch('img/manifest.json').then(r=>r.json()).then(list=>{ if(Array.isArray(list)) list.forEach(fn=>{ const o=document.createElement('option'); o.value='img/'+fn; o.textContent=fn; mediaSelectLocal.appendChild(o); }); }).catch(()=>{});
+    const mediaSelectLocal = document.createElement('select'); mediaSelectLocal.style.marginLeft='6px'; mediaSelectLocal.className = 'media-select-local'; mediaSelectLocal.innerHTML = '<option value="">--img local--</option>';
+    populateMediaSelect(mediaSelectLocal);
     mediaSelectLocal.addEventListener('change', ()=>{ if(mediaSelectLocal.value){ mediaUrl.value = mediaSelectLocal.value; mediaHidden.value=''; } });
 
     const mediaWrap = document.createElement('div'); mediaWrap.className='opt-media'; mediaWrap.appendChild(mediaUrl); mediaWrap.appendChild(mediaSelectLocal);

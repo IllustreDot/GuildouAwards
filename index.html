@@ -58,9 +58,15 @@
             </label>
 
             <label>Choisir une image depuis le dossier `img/` (facultatif)
-              <select id="q-media-select">
-                <option value="">-- Aucune --</option>
-              </select>
+              <div style="display:flex;gap:8px;align-items:center">
+                <select id="q-media-select">
+                  <option value="">-- Aucune --</option>
+                </select>
+                <button type="button" id="q-media-refresh" class="btn ghost">Rafraîchir</button>
+              </div>
+              <small style="display:block;margin-top:6px;color:var(--muted);font-size:12px">
+                Le bouton recharge le manifest. Pour inclure une nouvelle image, ajoutez le fichier dans `img/`, puis <a href="manifest-help.html" style="color:inherit; text-decoration:underline;">générez le manifest</a> et cliquez sur Rafraîchir.
+              </small>
             </label>
 
             <label>Ou importer un fichier (image / vidéo)

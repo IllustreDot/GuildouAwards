@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Guildou Awards — Générer le manifest</title>
+    <style>
+      body {font-family: system-ui, sans-serif; padding: 24px; background:#09090d; color:#eee;}
+      pre {background:#111; padding:16px; border-radius:8px; overflow:auto;}
+      a {color:#65d5ff;}
+      .card {max-width:720px; margin:auto;}
+      .note {margin-top:1rem; color:#a0a0b3;}
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Générer le manifest d'images</h1>
+      <p>Le bouton <strong>Rafraîchir</strong> recharge le fichier <code>img/manifest.json</code> en mémoire dans la page, mais il ne peut pas créer ou modifier ce fichier depuis le navigateur.</p>
+      <p>Pour inclure une nouvelle image ajoutée dans le dossier <code>img/</code>, exécute cette commande dans le dossier du projet :</p>
+      <pre>npm run manifest</pre>
+      <p>Ou, si tu n'utilises pas npm :</p>
+      <pre>node generate-manifest.js</pre>
+      <p class="note">Après avoir exécuté cette commande, clique à nouveau sur le bouton <strong>Rafraîchir</strong> dans le formulaire pour voir les nouvelles images.</p>
+      <p class="note">Le script génère automatiquement un manifeste trié avec tous les fichiers images/vidéo valides dans <code>img/</code>, sauf <code>manifest.json</code>.</p>
+      <p><a href="index.html">Retour au formulaire</a></p>
+    </div>
+  </body>
+</html>
