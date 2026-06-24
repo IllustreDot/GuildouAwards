@@ -70,13 +70,35 @@ input[type=text],input[type=search],select,textarea{width:100%;padding:10px;bord
 /* Slider for public panel */
 .slider{position:relative;width:100%;height:100%;overflow:hidden;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.04), transparent);}
 .survey-media{width:100%;max-width:640px;height:360px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);display:flex;align-items:center;justify-content:center;padding:8px;}
-.survey-media .slider{width:100%;height:100%;}
-.slides{display:flex;transition:transform 320ms ease;height:100%;}
-.slide{min-width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(180deg, rgba(0,0,0,0.05), transparent);}
-.slide img,.slide video,.slide iframe{display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.22);}
-.slider-btn{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.45);color:#fff;border:0;padding:8px;border-radius:8px;cursor:pointer}
-.slider-btn.left{left:8px}
-.slider-btn.right{right:8px}
+.survey-media .slider{width:100%;height:100%;position:relative;}
+.slides{position:relative;width:100%;height:100%;}
+.slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(180deg, rgba(0,0,0,0.05), transparent);opacity:0;visibility:hidden;transition:opacity 320ms ease;}
+.slide.active{opacity:1;visibility:visible;}
+.slide img,
+.slide video {
+  display:block;
+  max-width:100%;
+  max-height:100%;
+  width:auto;
+  height:auto;
+  margin:auto;
+  object-fit:contain;
+  object-position:center;
+  border-radius:8px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.22);
+}
+.slide iframe {
+  display:block;
+  width:100%;
+  height:100%;
+  border-radius:8px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.22);
+}
+ .slider-controls{position:absolute;left:0;right:0;bottom:8px;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 12px;pointer-events:none;}
+.slider-btn{position:relative;pointer-events:auto;background:rgba(0,0,0,0.45);color:#fff;border:0;padding:10px 12px;border-radius:999px;cursor:pointer;min-width:42px;min-height:42px;display:flex;align-items:center;justify-content:center;}
+.slider-btn.left,
+.slider-btn.right{position:relative;}
+.slider-caption{color:#fff;font-size:13px;font-weight:700;text-align:center;pointer-events:none;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:10px 14px;border-radius:999px;background:rgba(20,20,30,0.75);backdrop-filter:blur(12px);box-shadow:0 12px 32px rgba(0,0,0,0.2);}
 
 /* Cursor trail lines */
 .cursor-line{position:fixed;left:0;top:0;pointer-events:none;border-radius:4px;transform-origin:center;mix-blend-mode:screen;filter:blur(2px);z-index:9999;will-change:transform,opacity;width:40px;height:6px;opacity:0.9}
@@ -113,15 +135,23 @@ input[type=text],input[type=search],select,textarea{width:100%;padding:10px;bord
 .survey-content{width:100%;min-width:0}
 .survey-media{width:100%;max-width:640px;height:360px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);display:flex;align-items:center;justify-content:center;padding:8px;}
 .survey-media .slider{width:100%;height:100%;}
-.survey-media .slide{width:100%;height:100%;}
+.survey-media .slide{width:100%;height:100%;flex:0 0 100%;}
 .survey-media .slide > img,
-.survey-media .slide > video,
-.survey-media .slide > iframe{
+.survey-media .slide > video {
+  display:block;
+  max-width:100%;
+  max-height:100%;
+  width:auto;
+  height:auto;
+  object-fit:contain;
+  object-position:center;
+  border-radius:8px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.22);
+}
+.survey-media .slide > iframe {
+  display:block;
   width:100%;
   height:100%;
-  max-width:none;
-  max-height:none;
-  object-fit:contain;
   border-radius:8px;
   box-shadow:0 10px 30px rgba(0,0,0,0.22);
 }

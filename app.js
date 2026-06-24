@@ -431,6 +431,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
           const slidesWrap = document.createElement('div'); slidesWrap.className = 'slides';
           slides.forEach(s=>{
             const slide = document.createElement('div'); slide.className = 'slide';
+            slide.style.width = '100%';
+            slide.style.height = '100%';
             if(s.type==='youtube'){
               const iframe = document.createElement('iframe');
               iframe.src = youtubeEmbedUrl(s.src) || s.src;
@@ -444,36 +446,50 @@ document.addEventListener('DOMContentLoaded', ()=>{
             }else if(s.type==='video' || (s.src.indexOf('video/')>-1)){
               const v = document.createElement('video');
               v.controls = true; v.src = s.src;
-              v.style.width = '100%';
-              v.style.height = '100%';
+              v.style.maxWidth = '100%';
+              v.style.maxHeight = '100%';
+              v.style.width = 'auto';
+              v.style.height = 'auto';
               v.style.objectFit = 'contain';
               slide.appendChild(v);
             }else{
               const img = document.createElement('img');
               img.src = normalizeImageUrl(s.src);
               img.alt = s.caption || '';
-              img.style.width = '100%';
-              img.style.height = '100%';
+              img.style.maxWidth = '100%';
+              img.style.maxHeight = '100%';
+              img.style.width = 'auto';
+              img.style.height = 'auto';
               img.style.objectFit = 'contain';
+              img.style.objectPosition = 'center';
               slide.appendChild(img);
             }
             slidesWrap.appendChild(slide);
           });
           slider.appendChild(slidesWrap);
+          const controls = document.createElement('div'); controls.className = 'slider-controls';
           const btnL = document.createElement('button'); btnL.type='button'; btnL.className='slider-btn left'; btnL.textContent='<';
+          const captionEl = document.createElement('div'); captionEl.className = 'slider-caption';
           const btnR = document.createElement('button'); btnR.type='button'; btnR.className='slider-btn right'; btnR.textContent='>';
-          slider.appendChild(btnL); slider.appendChild(btnR);
+          controls.appendChild(btnL);
+          controls.appendChild(captionEl);
+          controls.appendChild(btnR);
+          slider.appendChild(controls);
           const mediaWrap = document.createElement('div'); mediaWrap.className = 'survey-media';
           mediaWrap.appendChild(slider);
           div.appendChild(mediaWrap);
           // slider logic
           let cur = 0; const max = slides.length;
-          // ensure slidesWrap width and each slide sizing
-          slidesWrap.style.width = (max * 100) + '%';
           Array.from(slidesWrap.children).forEach(s=>{ s.style.flex = '0 0 100%'; });
-          slidesWrap.style.transform = 'translateX(0)';
-          function show(i){ cur = (i+max)%max; slidesWrap.style.transform = `translateX(${-cur*100}%)`; }
-          btnL.addEventListener('click', ()=>{ show(cur-1); }); btnR.addEventListener('click', ()=>{ show(cur+1); });
+          function show(i){
+            cur = (i+max)%max;
+            Array.from(slidesWrap.children).forEach((slide, idx)=>{
+              slide.classList.toggle('active', idx === cur);
+            });
+            captionEl.textContent = slides[cur].caption || '';
+          }
+          btnL.addEventListener('click', ()=>{ show(cur-1); });
+          btnR.addEventListener('click', ()=>{ show(cur+1); });
           // default show first
           show(0);
           // when radio changes, move to corresponding slide if exists
@@ -510,17 +526,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
           }else if(it.media.type==='video' || (it.media.src.indexOf('video/')>-1)){
             const v = document.createElement('video');
             v.controls = true; v.src = it.media.src;
-            v.style.width = '100%';
-            v.style.height = '100%';
             v.style.objectFit = 'contain';
             mediaWrap.appendChild(v);
           }else{
             const img = document.createElement('img');
             img.src = normalizeImageUrl(it.media.src);
             img.alt = it.title || 'media';
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.objectFit = 'contain';
             mediaWrap.appendChild(img);
           }
           div.appendChild(mediaWrap);
