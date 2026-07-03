@@ -444,7 +444,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if(isAdmin()) return setMode('admin');
     const pass = prompt('Mot de passe admin :');
     if(pass === null) return; // cancel
-    const stored = localStorage.getItem('guildou:adminPass') || 'guildou';
+    const stored = localStorage.getItem('guildou:adminPass') || '123456789';
     if(pass === stored){ setAdmin(true); setMode('admin'); }
     else showModal('Erreur', 'Mot de passe incorrect');
   });
