@@ -20,16 +20,11 @@
           </div>
         </div>
         <nav class="top-actions">
-          <div class="mode-toggle" role="tablist" aria-label="Mode">
+            <div class="mode-toggle" role="tablist" aria-label="Mode">
             <button id="modeAdmin" class="btn ghost active" role="tab" aria-selected="true">Admin</button>
-            <button id="modePublic" class="btn ghost" role="tab">Public</button>
+            <button id="modePublic" class="btn ghost" role="tab">Formulaire</button>
           </div>
-          <button id="logoutBtn" class="btn ghost admin-only" style="display:none">Déconnexion</button>
-          <button id="exportResponses" class="btn ghost admin-only">Exporter réponses</button>
-          <button id="exportBtn" class="btn ghost admin-only">Exporter JSON</button>
-          <label class="btn ghost admin-only" for="importFile">Importer JSON</label>
-          <input id="importFile" type="file" accept="application/json" style="display:none" />
-          <button id="clearAll" class="btn warn admin-only">Supprimer tout</button>
+          <!-- admin controls removed per request -->
         </nav>
       </div>
     </header>
@@ -87,6 +82,8 @@
           <h4>Astuce</h4>
           <p>Les questions sont sauvegardées localement. Utilise l'export pour partager ou sauvegarder.</p>
         </div>
+
+        
       </section>
 
       <section class="right">
@@ -99,20 +96,37 @@
         <!-- Preview visuelle supprimée côté public -->
 
         <div id="publicPanel" class="panel public-panel" style="display:none">
-          <h2>Répondre aux questions</h2>
+          <h2 class="panel-title">Guildou Awards</h2>
           <form id="publicForm">
-            <label>Ton pseudo (optionnel)
-              <input id="respondent" type="text" placeholder="Ex: Arthas" />
-            </label>
             <div id="surveyQuestions"></div>
+
+            <label class="respondent-field">Ton pseudo (obligatoire)
+              <input id="respondent" name="respondent" type="text" placeholder="Ex: Arthas" required aria-required="true" />
+            </label>
+
             <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
               <button type="submit" class="btn">Envoyer mes réponses</button>
-              <button type="button" id="publicReset" class="btn ghost">Réinitialiser</button>
             </div>
           </form>
         </div>
       </section>
+      
     </main>
+
+    <div id="resultsPanel" class="results-wrapper" style="display:none;margin-top:12px">
+      <div class="container">
+        <div class="panel results-panel">
+          <div class="results-header">
+            <h2>Résultats des sondages</h2>
+            <div class="results-actions">
+              <button id="resetResultsBtn" class="btn ghost">Réinitialiser résultats</button>
+            </div>
+          </div>
+          <div id="participantsList" class="participants-list" style="margin-bottom:12px"></div>
+          <div id="resultsContainer"></div>
+        </div>
+      </div>
+    </div>
 
     <footer class="site-footer">
       <div class="container">© Guildou Awards — Prototype</div>
@@ -122,5 +136,14 @@
     <script src="https://unpkg.com/three@0.154.0/build/three.min.js"></script>
     <script src="bg.js"></script>
     <script src="cursor.js"></script>
+    <!-- Site modal for styled alerts -->
+    <div id="siteModal" class="site-modal" aria-hidden="true">
+      <div class="site-modal-backdrop"></div>
+      <div class="site-modal-panel" role="dialog" aria-modal="true" aria-labelledby="siteModalTitle">
+        <h3 id="siteModalTitle" class="site-modal-title"></h3>
+        <div id="siteModalBody" class="site-modal-body"></div>
+        <div class="site-modal-actions"><button id="siteModalOk" class="btn">OK</button><button id="siteModalCancel" class="btn ghost">Annuler</button></div>
+      </div>
+    </div>
   </body>
 </html>

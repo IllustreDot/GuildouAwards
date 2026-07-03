@@ -30,9 +30,12 @@ header, main, footer, .panel, .container, .site-header, .site-footer{position:re
 .sub{font-size:12px;color:rgba(255,255,255,0.5)}
 .site-header{padding:12px 0}
 .top-actions{display:flex;gap:8px;align-items:center}
-.mode-toggle{display:inline-flex;background:transparent;border-radius:999px;gap:6px;padding:4px}
-.mode-toggle .btn{padding:6px 10px;font-size:13px}
-.mode-toggle .btn.active{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#05060a}
+.mode-toggle{display:inline-flex;background:transparent;border-radius:14px;gap:6px;padding:4px}
+.mode-toggle .btn{padding:6px 10px;font-size:13px;background:rgba(255,255,255,0.08);color:var(--muted);border:none;border-radius:8px;transition:background .2s ease,color .2s ease}
+.mode-toggle .btn.ghost{border:none}
+.mode-toggle .btn:hover{background:rgba(255,255,255,0.14);color:#fff}
+.mode-toggle .btn.active{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#05060a;border:none}
+.mode-toggle .btn.active:hover{background:linear-gradient(90deg,var(--accent-2),var(--accent));color:#05060a}
 .top-actions #logoutBtn{border:1px solid rgba(255,255,255,0.04);padding:6px 10px}
 .btn{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#05060a;padding:8px 12px;border:none;border-radius:10px;cursor:pointer;font-weight:600}
 .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
@@ -125,6 +128,16 @@ input[type=text],input[type=search],select,textarea{width:100%;padding:10px;bord
 .public-panel.visible::before{content:'';pointer-events:none;position:absolute;left:0;right:0;top:0;height:120px;background:radial-gradient(400px 120px at 10% 10%, rgba(124,58,237,0.08), transparent);mix-blend-mode:screen}
 .public-panel{position:relative}
 .public-panel h2{color:var(--gold);font-family:Georgia,'Times New Roman',serif;letter-spacing:1px;margin-bottom:12px}
+/* Public panel header customization */
+.public-panel .panel-title{font-family:'Oxanium',sans-serif;font-size:36px;margin:0 0 12px;padding:8px 0;text-align:center;letter-spacing:1px;text-transform:uppercase;background:linear-gradient(90deg,#ff3b3b,#ff8c00,#ffd300,#4caf50,#2196f3,#7b1fa2);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 14px rgba(0,0,0,0.45));animation:rainbow 6s linear infinite}
+
+@keyframes rainbow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+@media (prefers-reduced-motion:reduce){.public-panel .panel-title{animation:none;background-size:100% 100%}}
+
+/* Respondent field styling (placed after questions) */
+.public-panel .respondent-field{display:block;margin-top:12px;font-weight:700;color:#fff}
+.public-panel .respondent-field input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.6));color:#fff;margin-top:6px}
 .public-panel .survey-q{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));border-left:4px solid var(--gold);padding:14px;margin-bottom:12px;display:grid;grid-template-columns:1fr;gap:18px}
 .public-panel .survey-q > .survey-content > label{color:#fff;font-weight:700;font-family:'Zen Dots', cursive;font-size:18px;line-height:1.3;display:block;margin-bottom:12px}
 .public-panel .choice-item{display:flex;align-items:center;gap:10px;position:relative;padding-left:32px;line-height:1.4;font-family:'Oxanium', sans-serif;font-weight:500;color:#fff;margin-bottom:10px}
@@ -140,6 +153,27 @@ input[type=text],input[type=search],select,textarea{width:100%;padding:10px;bord
 .public-panel .q-input textarea{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.6));color:#fff}
 .public-panel .qa-meta{color:rgba(255,255,255,0.6);margin-top:8px;font-size:13px}
 .public-panel .btn{background:linear-gradient(90deg,#7c3aed,#00e5ff);color:#05060a}
+
+/* Results panel styling */
+.results-panel h2{color:#fff;margin:0 0 10px}
+.results-panel .results-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.results-panel .results-actions{display:flex;gap:8px}
+.results-panel .participants-list{font-size:13px;color:var(--muted);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);margin-bottom:14px}
+.result-block{padding:12px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);margin-bottom:12px;border:1px solid rgba(255,255,255,0.03);display:flex;gap:18px;align-items:flex-start}
+.result-block h3{margin:0;font-size:16px;color:#fff}
+.result-list{flex:1}
+.result-row{font-size:14px;color:var(--muted);margin:6px 0}
+.results-panel canvas{width:200px;height:140px}
+
+/* Site modal (styled replacement for alert) */
+.site-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9999}
+.site-modal[aria-hidden="false"]{display:flex}
+.site-modal-backdrop{position:absolute;inset:0;background:rgba(2,6,23,0.7);backdrop-filter:blur(4px)}
+.site-modal-panel{position:relative;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:12px;padding:18px;max-width:560px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.04);z-index:2;color:#fff}
+.site-modal-title{margin:0 0 8px;font-size:18px;color:var(--gold)}
+.site-modal-body{font-size:14px;color:var(--muted);margin-bottom:12px}
+.site-modal-actions{text-align:right}
+.site-modal-actions .btn{min-width:96px}
 
 /* Layout for each survey question: content + optional media below on smaller breakpoints */
 .survey-q{display:grid;grid-template-columns:1fr;gap:18px;align-items:start;justify-content:center;max-width:1240px;margin:0 auto;padding:6px 0}

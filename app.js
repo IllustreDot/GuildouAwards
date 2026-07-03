@@ -22,6 +22,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const publicForm = document.getElementById('publicForm');
   const surveyQuestions = document.getElementById('surveyQuestions');
   const publicReset = document.getElementById('publicReset');
+  const resultsPanel = document.getElementById('resultsPanel');
+  const resultsContainer = document.getElementById('resultsContainer');
+  const participantsList = document.getElementById('participantsList');
   const logoutBtn = document.getElementById('logoutBtn');
   const importFile = document.getElementById('importFile');
   const clearAll = document.getElementById('clearAll');
@@ -51,6 +54,60 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
 
   function setImgListStatus(message){ if(imgListStatus) imgListStatus.textContent = message; }
+
+  // Modal helper to replace native alerts
+  function showModal(title, message){
+    try{
+      const siteModal = document.getElementById('siteModal');
+      const siteModalTitle = document.getElementById('siteModalTitle');
+      const siteModalBody = document.getElementById('siteModalBody');
+      const siteModalOk = document.getElementById('siteModalOk');
+      const siteModalCancel = document.getElementById('siteModalCancel');
+      if(!siteModal) return Promise.resolve();
+      siteModalTitle.textContent = title || '';
+      siteModalBody.textContent = message || '';
+      // ensure cancel hidden for simple modal
+      if(siteModalCancel) siteModalCancel.style.display = 'none';
+      siteModal.setAttribute('aria-hidden','false');
+      siteModalOk.focus();
+      return new Promise(resolve=>{
+        function close(){ siteModal.setAttribute('aria-hidden','true'); siteModalOk.removeEventListener('click', onOk); if(siteModalCancel) siteModalCancel.removeEventListener('click', onCancel); document.removeEventListener('keydown', onKey); resolve(); }
+        function onOk(){ close(); }
+        function onCancel(){ close(); }
+        function onKey(e){ if(e.key === 'Escape') close(); }
+        siteModalOk.addEventListener('click', onOk);
+        if(siteModalCancel) siteModalCancel.addEventListener('click', onCancel);
+        document.addEventListener('keydown', onKey);
+      });
+    }catch(e){ return Promise.resolve(); }
+  }
+
+  // Confirmation modal (returns true if confirmed, false if cancelled)
+  function showConfirm(title, message){
+    try{
+      const siteModal = document.getElementById('siteModal');
+      const siteModalTitle = document.getElementById('siteModalTitle');
+      const siteModalBody = document.getElementById('siteModalBody');
+      const siteModalOk = document.getElementById('siteModalOk');
+      const siteModalCancel = document.getElementById('siteModalCancel');
+      if(!siteModal) return Promise.resolve(false);
+      siteModalTitle.textContent = title || '';
+      siteModalBody.textContent = message || '';
+      if(siteModalCancel) siteModalCancel.style.display = '';
+      siteModal.setAttribute('aria-hidden','false');
+      // focus Cancel to make accidental confirmations less likely
+      (siteModalCancel || siteModalOk).focus();
+      return new Promise(resolve=>{
+        function cleanup(){ siteModal.setAttribute('aria-hidden','true'); siteModalOk.removeEventListener('click', onOk); if(siteModalCancel) siteModalCancel.removeEventListener('click', onCancel); document.removeEventListener('keydown', onKey); }
+        function onOk(){ cleanup(); resolve(true); }
+        function onCancel(){ cleanup(); resolve(false); }
+        function onKey(e){ if(e.key === 'Escape'){ cleanup(); resolve(false); } }
+        siteModalOk.addEventListener('click', onOk);
+        if(siteModalCancel) siteModalCancel.addEventListener('click', onCancel);
+        document.addEventListener('keydown', onKey);
+      });
+    }catch(e){ return Promise.resolve(false); }
+  }
 
   function normalizeImageFilename(name){
     if(!name || typeof name !== 'string') return '';
@@ -220,7 +277,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if(comma>-1){ approxBytes = Math.floor((mediaSrc.length - comma - 1) * 3 / 4); }
       }
       if(approxBytes > MAX_MEDIA_BYTES || mediaSrc.length > MAX_DATAURL_CHARS){
-        alert('Le media est trop volumineux pour être stocké localement (limite 5MB). Utilise une URL externe ou enlève le media.');
+        showModal('Erreur', 'Le media est trop volumineux pour être stocké localement (limite 5MB). Utilise une URL externe ou enlève le media.');
         mediaSrc = '';
       }
     }
@@ -254,18 +311,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(err && (err.name === 'QuotaExceededError' || err.code === 22 || err.code === 1014)){
         if(item && item.media){
           delete item.media;
-          try{ saveData(data); renderList(data); alert('Espace de stockage insuffisant : le media a été retiré de la question avant sauvegarde.'); }
+          try{ saveData(data); renderList(data); showModal('Erreur', 'Espace de stockage insuffisant : le media a été retiré de la question avant sauvegarde.'); }
           catch(e){
             // still failing - rollback
             data = data.filter(x=>x.id!==id);
             renderList(data);
-            alert('Impossible de sauvegarder la question en raison d\'un quota de stockage. Veuillez exporter/vider des données existantes.');
+            showModal('Erreur', 'Impossible de sauvegarder la question en raison d\'un quota de stockage. Veuillez exporter/vider des données existantes.');
           }
         }else{
           // no media to remove, rollback
           data = data.filter(x=>x.id!==id);
           renderList(data);
-          alert('Impossible de sauvegarder la question en raison d\'un quota de stockage. Veuillez exporter/vider des données existantes.');
+          showModal('Erreur', 'Impossible de sauvegarder la question en raison d\'un quota de stockage. Veuillez exporter/vider des données existantes.');
         }
       }else{
         throw err;
@@ -284,7 +341,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   resetBtn.addEventListener('click', ()=>{ form.reset(); qId.value=''; });
 
-  qaList.addEventListener('click', e=>{
+  qaList.addEventListener('click', async e=>{
     const edit = e.target.closest('[data-edit]');
     const del = e.target.closest('[data-delete]');
     if(edit){
@@ -312,7 +369,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
     if(del){
       const id = del.dataset.delete;
-      if(!confirm('Supprimer cette question ?')) return;
+      const ok = await showConfirm('Supprimer', 'Supprimer cette question ?');
+      if(!ok) return;
       data = data.filter(x=>x.id!==id);
       saveData(data);
       renderList(data);
@@ -327,7 +385,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   });
 
-  exportBtn.addEventListener('click', ()=>{
+  if(exportBtn) exportBtn.addEventListener('click', ()=>{
     const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -336,7 +394,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
 
   // Export collected responses
-  exportResponses.addEventListener('click', ()=>{
+  if(exportResponses) exportResponses.addEventListener('click', ()=>{
     const resp = loadResponses();
     const blob = new Blob([JSON.stringify(resp, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
@@ -357,9 +415,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(hintPanel) hintPanel.style.display = 'none';
       publicPanel.style.display = 'none';
       publicPanel.classList.remove('visible');
+      if(resultsPanel) resultsPanel.style.display = '';
+      // refresh results view
+      renderAdminResults();
       if(layout) layout.classList.remove('public-open');
     }else{
       if(listPanel) listPanel.style.display = 'none';
+      if(resultsPanel) resultsPanel.style.display = 'none';
       // hint visible in public mode
       if(hintPanel) hintPanel.style.display = '';
       publicPanel.style.display = '';
@@ -384,11 +446,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if(pass === null) return; // cancel
     const stored = localStorage.getItem('guildou:adminPass') || 'guildou';
     if(pass === stored){ setAdmin(true); setMode('admin'); }
-    else alert('Mot de passe incorrect');
+    else showModal('Erreur', 'Mot de passe incorrect');
   });
   modePublic.addEventListener('click', ()=>setMode('public'));
 
-  logoutBtn.addEventListener('click', ()=>{
+  if(logoutBtn) logoutBtn.addEventListener('click', ()=>{
     setAdmin(false);
     setMode('public');
   });
@@ -407,16 +469,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(Array.isArray(it.choices) && it.choices.length){
         // structured choices with media
         if(typeof it.choices[0] === 'object'){
-          inputHtml = '<div class="q-input">' + it.choices.map((c,idx)=>{
-            return `<label class="choice-item"><input type="radio" name="q_${it.id}" value="${idx}"> ${escapeHtml(c.text)}</label>`;
-          }).join('') + '</div>';
+              inputHtml = '<div class="q-input">' + it.choices.map((c,idx)=>{
+                return `<label class="choice-item"><input type="radio" name="q_${it.id}" value="${idx}" required> ${escapeHtml(c.text)}</label>`;
+              }).join('') + '</div>';
         }else{
-          inputHtml = '<div class="q-input">' + it.choices.map((c,idx)=>{
-            return `<label class="choice-item"><input type="radio" name="q_${it.id}" value="${escapeHtml(c)}"> ${escapeHtml(c)}</label>`;
-          }).join('') + '</div>';
+              inputHtml = '<div class="q-input">' + it.choices.map((c,idx)=>{
+                return `<label class="choice-item"><input type="radio" name="q_${it.id}" value="${idx}" required> ${escapeHtml(c)}</label>`;
+              }).join('') + '</div>';
         }
       }else{
-        inputHtml = `<div class="q-input"><textarea name="q_${it.id}" placeholder="Ta réponse..." rows="2"></textarea></div>`;
+            inputHtml = `<div class="q-input"><textarea name="q_${it.id}" placeholder="Ta réponse..." rows="2" required></textarea></div>`;
       }
       left.innerHTML = `\n        <label>${escapeHtml(it.title)}</label>\n        ${inputHtml}\n      `;
 
@@ -548,22 +610,124 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   publicForm.addEventListener('submit', (e)=>{
     e.preventDefault();
+    // Let browser show validation errors if any
+    if(!publicForm.reportValidity()) return;
     const formData = new FormData(publicForm);
     const respondent = (formData.get('respondent')||'').toString().trim();
     const answers = [];
+    const aggregated = {};
     data.forEach(it=>{
       const key = 'q_'+it.id;
       const val = (formData.get(key)||'').toString();
       answers.push({id:it.id, question:it.title, answer:val});
+      // count by index (val should be index for choices)
+      if(!aggregated[it.id]) aggregated[it.id] = {};
+      const k = val || '__empty__';
+      aggregated[it.id][k] = (aggregated[it.id][k]||0) + 1;
     });
+    // store full submission (without linking respondent to answers in results display)
     const resp = {id:idForNow(), timestamp:Date.now(), respondent, answers};
     const all = loadResponses(); all.unshift(resp); saveResponses(all);
-    publicForm.reset(); alert('Merci — réponses enregistrées.');
+    // update results aggregation store
+    updateAggregatedResults(aggregated, respondent);
+    publicForm.reset(); showModal('Merci', 'Réponses enregistrées.');
+    // refresh admin results if visible
+    if(resultsPanel && resultsPanel.style.display !== 'none') renderAdminResults();
   });
 
   // No type toggle: questions are always choice-type.
 
-  publicReset.addEventListener('click', ()=>{ publicForm.reset(); });
+  if(publicReset) publicReset.addEventListener('click', ()=>{ publicForm.reset(); });
+
+  // Aggregated results stored separately for quick admin view
+  function loadAggregated(){ try{ const r = localStorage.getItem('guildou:results:v1'); return r?JSON.parse(r):{byQuestion:{},respondents:[]}; }catch(e){return{byQuestion:{},respondents:[]};} }
+  function saveAggregated(obj){ localStorage.setItem('guildou:results:v1', JSON.stringify(obj)); }
+
+  function updateAggregatedResults(aggByQ, respondent){
+    const store = loadAggregated();
+    // merge counts
+    Object.keys(aggByQ).forEach(qid=>{
+      store.byQuestion[qid] = store.byQuestion[qid] || {counts:{}, total:0};
+      const dest = store.byQuestion[qid];
+      Object.keys(aggByQ[qid]).forEach(k=>{ dest.counts[k] = (dest.counts[k]||0) + aggByQ[qid][k]; dest.total = (dest.total||0) + aggByQ[qid][k]; });
+    });
+    // add respondent to list (no association)
+    if(respondent){ store.respondents = store.respondents || []; if(!store.respondents.includes(respondent)) store.respondents.push(respondent); }
+    saveAggregated(store);
+  }
+
+  function renderAdminResults(){
+    if(!resultsContainer) return;
+    const agg = loadAggregated();
+    resultsContainer.innerHTML = '';
+    // participants summary at top
+    const participants = (agg.respondents || []);
+    if(participantsList) participantsList.innerHTML = participants.length ? `<strong>Participants (${participants.length}):</strong> ${participants.join(', ')}` : '<em>Aucun participant pour l\'instant</em>';
+    if(!data || !data.length){ resultsContainer.innerHTML = '<div>Aucune question.</div>'; return; }
+    data.forEach(it=>{
+      const wrap = document.createElement('div'); wrap.className = 'result-block';
+      const titleWrap = document.createElement('div'); titleWrap.style.flex = '1';
+      const title = document.createElement('h3'); title.textContent = it.title; titleWrap.appendChild(title);
+      const list = document.createElement('div'); list.className = 'result-list';
+      const stats = agg.byQuestion && agg.byQuestion[it.id] ? agg.byQuestion[it.id] : {counts:{}, total:0};
+      const total = stats.total || 0;
+      if(Array.isArray(it.choices) && it.choices.length){
+        it.choices.forEach((c, idx)=>{
+          const key = String(idx);
+          const count = stats.counts[key] || 0;
+          const pct = total ? Math.round((count/total)*100) : 0;
+          const row = document.createElement('div'); row.className = 'result-row'; row.textContent = `${escapeHtml(typeof c === 'object' ? c.text : c)} — ${pct}% (${count})`;
+          list.appendChild(row);
+        });
+      }else{
+        // free text answers breakdown: show top answers
+        const entries = Object.entries(stats.counts||{}).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v).slice(0,10);
+        entries.forEach(en=>{ const pct = total ? Math.round((en.v/total)*100) : 0; const row = document.createElement('div'); row.className='result-row'; row.textContent = `${en.k} — ${pct}% (${en.v})`; list.appendChild(row); });
+      }
+      // canvas pie
+      const canvas = document.createElement('canvas'); canvas.width = 300; canvas.height = 200;
+      wrap.appendChild(canvas);
+      wrap.appendChild(titleWrap);
+      wrap.appendChild(list);
+      resultsContainer.appendChild(wrap);
+      // draw pie
+      drawPieChart(canvas, it, stats);
+    });
+  }
+
+  function drawPieChart(canvas, question, stats){
+    const ctx = canvas.getContext('2d'); if(!ctx) return;
+    const total = stats.total || 0; ctx.clearRect(0,0,canvas.width,canvas.height);
+    const centerX = canvas.width/2; const centerY = canvas.height/2; const radius = Math.min(centerX, centerY) - 10;
+    let start = -Math.PI/2;
+    const colors = ['#fbbf24','#7c3aed','#00e5ff','#ff6b6b','#ffd166','#6bcB77','#f78fb3','#4d96ff'];
+    const entries = (Array.isArray(question.choices) ? question.choices.map((c,idx)=>({label: typeof c==='object'?c.text:c, count: stats.counts[String(idx)]||0})) : Object.entries(stats.counts||{}).map(([k,v])=>({label:k,count:v})) );
+    entries.forEach((e, i)=>{
+      const slice = total ? (e.count/total) : 0;
+      const end = start + slice * Math.PI * 2;
+      ctx.beginPath(); ctx.moveTo(centerX, centerY); ctx.arc(centerX, centerY, radius, start, end); ctx.closePath(); ctx.fillStyle = colors[i % colors.length]; ctx.fill(); start = end;
+    });
+    // donut hole
+    ctx.beginPath(); ctx.fillStyle = '#0a0b10'; ctx.arc(centerX, centerY, radius*0.5, 0, Math.PI*2); ctx.fill();
+    // center text total
+    ctx.fillStyle = '#fff'; ctx.font = '14px Inter, Arial'; ctx.textAlign = 'center'; ctx.fillText(total + ' votes', centerX, centerY+5);
+  }
+
+  // Reset aggregated results and stored responses with double confirmation
+  const resetResultsBtn = document.getElementById('resetResultsBtn');
+  async function resetAllResults(){
+    const ok = await showConfirm('Confirmer', 'Confirmer : supprimer tous les résultats agrégés ?');
+    if(!ok) return;
+    const finalOk = await showConfirm('Confirmation finale', 'Es-tu sûr de vouloir réinitialiser TOUTES les réponses et résultats ?');
+    if(!finalOk) return;
+    try{ localStorage.removeItem('guildou:results:v1'); localStorage.removeItem('guildou:responses:v1'); }catch(e){}
+    // refresh UI
+    if(participantsList) participantsList.innerHTML = '<em>Aucun participant pour l\'instant</em>';
+    renderAdminResults();
+    renderList(data);
+    showModal('Réinitialisé', 'Résultats et réponses réinitialisés.');
+  }
+  if(resetResultsBtn) resetResultsBtn.addEventListener('click', resetAllResults);
 
   function saveResponses(arr){ localStorage.setItem('guildou:responses:v1', JSON.stringify(arr)); }
   function loadResponses(){ try{ const r = localStorage.getItem('guildou:responses:v1'); return r?JSON.parse(r):[]; }catch(e){return[];} }
@@ -573,13 +737,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
   function isAdmin(){ return sessionStorage.getItem('guildou:admin') === '1'; }
   function setAdmin(flag){
     if(flag) sessionStorage.setItem('guildou:admin','1'); else sessionStorage.removeItem('guildou:admin');
-    logoutBtn.style.display = flag ? '' : 'none';
+    if(logoutBtn) logoutBtn.style.display = flag ? '' : 'none';
   }
 
   // restore admin state if present
   if(isAdmin()) setMode('admin'); else setMode('public');
 
-  importFile.addEventListener('change', (ev)=>{
+  if(importFile) importFile.addEventListener('change', (ev)=>{
     const f = ev.target.files && ev.target.files[0];
     if(!f) return;
     const reader = new FileReader();
@@ -605,7 +769,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         saveData(data);
         renderList(data);
         importFile.value='';
-      }catch(err){ alert('Impossible d\'importer le fichier : '+err.message); }
+      }catch(err){ showModal('Erreur', 'Impossible d\'importer le fichier : '+err.message); }
     };
     reader.readAsText(f);
   });
@@ -616,7 +780,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const f = ev.target.files && ev.target.files[0];
       if(!f) { mediaDataUrl=''; mediaFileSize = 0; return; }
       if(f.size > MAX_MEDIA_BYTES){
-        alert('Fichier trop volumineux (limite 5MB). Choisis un fichier plus petit ou utilise une URL externe.');
+        showModal('Erreur', 'Fichier trop volumineux (limite 5MB). Choisis un fichier plus petit ou utilise une URL externe.');
         qMediaFile.value = '';
         mediaDataUrl = '';
         mediaFileSize = 0;
@@ -629,8 +793,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   }
 
-  clearAll.addEventListener('click', ()=>{
-    if(!confirm('Supprimer toutes les questions ?')) return;
+  if(clearAll) clearAll.addEventListener('click', async ()=>{
+    const ok = await showConfirm('Supprimer', 'Supprimer toutes les questions ?');
+    if(!ok) return;
     data = [];
     saveData(data);
     renderList(data);
