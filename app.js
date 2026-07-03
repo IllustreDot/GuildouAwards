@@ -751,15 +751,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     try{
       if(!layout) return;
       if(publicPanel && publicPanel.classList.contains('visible')){
-        // compute height and header offset
-        const header = document.querySelector('.site-header');
-        const headerH = header ? header.offsetHeight : 0;
-        const rect = publicPanel.getBoundingClientRect();
-        const h = Math.max(rect.height, publicPanel.offsetHeight || 0);
-        // position panel below header
-        publicPanel.style.top = (headerH + 20) + 'px';
-        // ensure layout has enough bottom padding (panel height + margin)
-        layout.style.paddingBottom = (h + headerH + 40) + 'px';
+        layout.style.paddingBottom = '';
+        if(publicPanel) publicPanel.style.top = '';
       }else{
         layout.style.paddingBottom = '';
         if(publicPanel) publicPanel.style.top = '';

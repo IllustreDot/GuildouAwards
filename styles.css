@@ -40,8 +40,8 @@ header, main, footer, .panel, .container, .site-header, .site-footer{position:re
 
 .layout{display:grid;grid-template-columns:1fr 420px;gap:20px;margin-top:18px;position:relative}
 
-/* when public panel is open, provide bottom padding so footer sits below it */
-.layout.public-open{padding-bottom:520px}
+/* public mode uses a single-column flow so footer stays below the survey */
+.layout.public-open{grid-template-columns:1fr}
 .panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:var(--radius);padding:18px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 6px 18px rgba(2,6,23,0.6)}
 .left .panel h2,.right .panel h2{color:#fff;margin:0 0 10px}
 label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
@@ -94,11 +94,12 @@ input[type=text],input[type=search],select,textarea{width:100%;padding:10px;bord
   border-radius:8px;
   box-shadow:0 10px 30px rgba(0,0,0,0.22);
 }
- .slider-controls{position:absolute;left:0;right:0;bottom:8px;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 12px;pointer-events:none;}
-.slider-btn{position:relative;pointer-events:auto;background:rgba(0,0,0,0.45);color:#fff;border:0;padding:10px 12px;border-radius:999px;cursor:pointer;min-width:42px;min-height:42px;display:flex;align-items:center;justify-content:center;}
+ .slider-controls{position:absolute;left:0;right:0;bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 16px;pointer-events:none;}
+.slider-btn{position:relative;pointer-events:auto;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);border:0;padding:10px 12px;border-radius:999px;cursor:pointer;min-width:42px;min-height:42px;display:flex;align-items:center;justify-content:center;transition:background .2s ease,color .2s ease;flex:0 0 auto;}
+.slider-btn:hover{background:rgba(255,255,255,0.14);color:#fff}
 .slider-btn.left,
 .slider-btn.right{position:relative;}
-.slider-caption{color:#fff;font-size:13px;font-weight:700;text-align:center;pointer-events:none;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:10px 14px;border-radius:999px;background:rgba(20,20,30,0.75);backdrop-filter:blur(12px);box-shadow:0 12px 32px rgba(0,0,0,0.2);}
+.slider-caption{color:rgba(255,255,255,0.8);font-size:13px;font-weight:700;text-align:center;pointer-events:none;flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,0.06);backdrop-filter:blur(12px);box-shadow:0 12px 32px rgba(0,0,0,0.1);}
 
 /* Cursor trail lines */
 .cursor-line{position:fixed;left:0;top:0;pointer-events:none;border-radius:4px;transform-origin:center;mix-blend-mode:screen;filter:blur(2px);z-index:9999;will-change:transform,opacity;width:40px;height:6px;opacity:0.9}
@@ -120,21 +121,31 @@ input[type=text],input[type=search],select,textarea{width:100%;padding:10px;bord
 .survey-q .q-input{margin-top:8px}
 
 /* World of Warcraft — Midnight styling for public view */
-.public-panel.visible{grid-column:1 / -1;padding:28px;border-radius:14px;background:linear-gradient(180deg,#04030a,#07040c 60%);border:1px solid rgba(251,191,36,0.08);box-shadow:0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.02);width:100%;max-width:1240px;margin:0 auto;position:absolute;left:50%;transform:translateX(-50%);top:0;z-index:3}
+.public-panel.visible{padding:28px 28px 18px;border-radius:14px;background:linear-gradient(180deg,#04030a,#07040c 60%);border:1px solid rgba(251,191,36,0.08);box-shadow:0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.02);width:100%;max-width:1240px;margin:0 auto 5vh;position:relative;left:auto;transform:none;top:auto;z-index:1}
 .public-panel.visible::before{content:'';pointer-events:none;position:absolute;left:0;right:0;top:0;height:120px;background:radial-gradient(400px 120px at 10% 10%, rgba(124,58,237,0.08), transparent);mix-blend-mode:screen}
 .public-panel{position:relative}
 .public-panel h2{color:var(--gold);font-family:Georgia,'Times New Roman',serif;letter-spacing:1px;margin-bottom:12px}
-.public-panel .survey-q{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));border-left:4px solid var(--gold);padding:14px;margin-bottom:12px}
-.public-panel .survey-q label{color:#fff;font-weight:700}
+.public-panel .survey-q{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));border-left:4px solid var(--gold);padding:14px;margin-bottom:12px;display:grid;grid-template-columns:1fr;gap:18px}
+.public-panel .survey-q > .survey-content > label{color:#fff;font-weight:700;font-family:'Zen Dots', cursive;font-size:18px;line-height:1.3;display:block;margin-bottom:12px}
+.public-panel .choice-item{display:flex;align-items:center;gap:10px;position:relative;padding-left:32px;line-height:1.4;font-family:'Oxanium', sans-serif;font-weight:500;color:#fff;margin-bottom:10px}
+.public-panel .choice-item input[type="radio"]{position:absolute;left:0;top:50%;transform:translateY(-50%);margin-top:0;width:18px;height:18px;appearance:none;-webkit-appearance:none;border:2px solid rgba(255,255,255,0.35);border-radius:50%;background:#0a0b10;cursor:pointer;transition:border-color .2s ease,box-shadow .2s ease,background .2s ease}
+.public-panel .choice-item input[type="radio"]::before{content:'';display:block;width:10px;height:10px;border-radius:50%;margin:auto;transform:scale(0);transition:transform .2s ease,background .2s ease;background:transparent}
+.public-panel .choice-item input[type="radio"]:checked{border-color:#fbbf24;background:rgba(251,191,36,0.12);box-shadow:0 0 0 4px rgba(251,191,36,0.12)}
+.public-panel .choice-item input[type="radio"]:checked::before{transform:scale(1);background:#fbbf24}
+.public-panel .choice-item:hover input[type="radio"]{border-color:#fbbf24}
+.public-panel .choice-item input[type="radio"] + span,
+.public-panel .choice-item input[type="radio"] + label,
+.public-panel .choice-item > span,
+.public-panel .choice-item > label{display:inline-flex;align-items:center}
 .public-panel .q-input textarea{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.6));color:#fff}
 .public-panel .qa-meta{color:rgba(255,255,255,0.6);margin-top:8px;font-size:13px}
 .public-panel .btn{background:linear-gradient(90deg,#7c3aed,#00e5ff);color:#05060a}
 
-/* Layout for each survey question: content + optional media on right */
-.survey-q{display:grid;grid-template-columns:1fr 640px;gap:22px;align-items:start;justify-content:center;max-width:1240px;margin:0 auto;padding:6px 0}
+/* Layout for each survey question: content + optional media below on smaller breakpoints */
+.survey-q{display:grid;grid-template-columns:1fr;gap:18px;align-items:start;justify-content:center;max-width:1240px;margin:0 auto;padding:6px 0}
 .survey-content{width:100%;min-width:0}
-.survey-media{width:100%;max-width:640px;height:360px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);display:flex;align-items:center;justify-content:center;padding:8px;}
-.survey-media .slider{width:100%;height:100%;}
+.survey-media{width:100%;max-width:100%;height:70vh;min-height:560px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);display:flex;align-items:center;justify-content:center;padding:8px;position:relative;}
+.survey-media .slider{width:100%;height:100%;position:relative;}
 .survey-media .slide{width:100%;height:100%;flex:0 0 100%;}
 .survey-media .slide > img,
 .survey-media .slide > video {
