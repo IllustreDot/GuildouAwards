@@ -68,6 +68,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
     return firebaseDb.collection('questions').doc(item.id).set({
       ...item,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(error => {
+      console.error('Firebase question save failed', error);
+      setStatusMessage('Erreur Firebase question : ' + (error.message || error));
+      throw error;
     });
   }
 
@@ -76,6 +80,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
     return firebaseDb.collection('responses').doc(resp.id).set({
       ...resp,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(error => {
+      console.error('Firebase response save failed', error);
+      setStatusMessage('Erreur Firebase réponse : ' + (error.message || error));
+      throw error;
     });
   }
 
@@ -92,22 +100,29 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
 
   async function loadFirebaseAggregated(){
-    const responses = await loadFirebaseResponses();
-    const summary = {byQuestion:{}, respondents:[]};
-    responses.forEach(resp => {
-      if(resp.respondent){
-        if(!summary.respondents.includes(resp.respondent)) summary.respondents.push(resp.respondent);
-      }
-      if(!Array.isArray(resp.answers)) return;
-      resp.answers.forEach(answer => {
-        const qid = answer.id;
-        const key = answer.answer || '__empty__';
-        summary.byQuestion[qid] = summary.byQuestion[qid] || {counts:{}, total:0};
-        summary.byQuestion[qid].counts[key] = (summary.byQuestion[qid].counts[key]||0) + 1;
-        summary.byQuestion[qid].total += 1;
+    try {
+      const responses = await loadFirebaseResponses();
+      const summary = {byQuestion:{}, respondents:[]};
+      responses.forEach(resp => {
+        if(resp.respondent){
+          if(!summary.respondents.includes(resp.respondent)) summary.respondents.push(resp.respondent);
+        }
+        if(!Array.isArray(resp.answers)) return;
+        resp.answers.forEach(answer => {
+          const qid = answer.id;
+          const key = answer.answer || '__empty__';
+          summary.byQuestion[qid] = summary.byQuestion[qid] || {counts:{}, total:0};
+          summary.byQuestion[qid].counts[key] = (summary.byQuestion[qid].counts[key]||0) + 1;
+          summary.byQuestion[qid].total += 1;
+        });
       });
-    });
-    return summary;
+      return summary;
+    } catch (error) {
+      console.warn('Firebase aggregated load failed', error);
+      setStatusMessage('Firebase inaccessible : utilisation du mode local.');
+      firebaseEnabled = false;
+      return loadAggregated();
+    }
   }
 
   function populateSelectWithImages(select, list){
@@ -309,8 +324,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
         }
       } catch (error) {
         console.warn('Firebase questions unavailable', error);
+        setStatusMessage('Firebase inaccessible : utilisation du mode local.');
+        firebaseEnabled = false;
         data = loadData();
-        setStatusMessage('');
       }
     } else {
       data = loadData();
@@ -763,7 +779,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
   async function renderAdminResults(){
     if(!resultsContainer) return;
     resultsContainer.innerHTML = '';
-    const agg = isFirebaseEnabled() ? await loadFirebaseAggregated() : loadAggregated();
+    let agg;
+    try {
+      agg = isFirebaseEnabled() ? await loadFirebaseAggregated() : loadAggregated();
+    } catch (error) {
+      console.warn('Admin results load failed', error);
+      setStatusMessage('Résultats Firebase indisponibles, affichage local.');
+      agg = loadAggregated();
+    }
     // participants summary at top
     const participants = (agg.respondents || []);
     if(participantsList) participantsList.innerHTML = participants.length ? `<strong>Participants (${participants.length}):</strong> ${participants.join(', ')}` : '<em>Aucun participant pour l\'instant</em>';
