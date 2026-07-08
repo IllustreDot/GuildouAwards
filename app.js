@@ -727,7 +727,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     requestAnimationFrame(adjustPublicPanelSpacing);
   }
 
-  publicForm.addEventListener('submit', (e)=>{
+  publicForm.addEventListener('submit', async (e)=>{
     e.preventDefault();
     // Let browser show validation errors if any
     if(!publicForm.reportValidity()) return;
@@ -749,7 +749,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const all = loadResponses(); all.unshift(resp); saveResponses(all);
     // update results aggregation store
     updateAggregatedResults(aggregated, respondent);
-    saveResponseToFirebase(resp).catch(()=>{});
+    try{
+      await saveResponseToFirebase(resp);
+    }catch(e){
+      console.warn('Firebase response save failed during submit', e);
+    }
     publicForm.reset(); showModal('Merci', 'Réponses enregistrées.');
     // refresh admin results if visible
     if(resultsPanel && resultsPanel.style.display !== 'none') renderAdminResults();
@@ -847,7 +851,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if(!ok) return;
     const finalOk = await showConfirm('Confirmation finale', 'Es-tu sûr de vouloir réinitialiser TOUTES les réponses et résultats ?');
     if(!finalOk) return;
-    try{ localStorage.removeItem('guildou:results:v1'); localStorage.removeItem('guildou:responses:v1'); }catch(e){}
+    try{
+      localStorage.removeItem('guildou:results:v1');
+      localStorage.removeItem('guildou:responses:v1');
+      if(isFirebaseEnabled()){
+        try{
+          const snapshot = await firebaseDb.collection('responses').get();
+          const batch = firebaseDb.batch();
+          snapshot.docs.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+        }catch(error){
+          console.warn('Firebase reset responses failed', error);
+          setStatusMessage('Erreur lors de la réinitialisation Firebase : ' + (error.message || error));
+        }
+      }
+    }catch(e){
+      console.warn('Reset results local cleanup failed', e);
+    }
     // refresh UI
     if(participantsList) participantsList.innerHTML = '<em>Aucun participant pour l\'instant</em>';
     renderAdminResults();
