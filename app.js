@@ -85,6 +85,31 @@ document.addEventListener('DOMContentLoaded', ()=>{
     return snapshot.docs.map(doc => doc.data());
   }
 
+  async function loadFirebaseResponses(){
+    if(!isFirebaseEnabled()) return [];
+    const snapshot = await firebaseDb.collection('responses').orderBy('createdAt', 'desc').get();
+    return snapshot.docs.map(doc => doc.data());
+  }
+
+  async function loadFirebaseAggregated(){
+    const responses = await loadFirebaseResponses();
+    const summary = {byQuestion:{}, respondents:[]};
+    responses.forEach(resp => {
+      if(resp.respondent){
+        if(!summary.respondents.includes(resp.respondent)) summary.respondents.push(resp.respondent);
+      }
+      if(!Array.isArray(resp.answers)) return;
+      resp.answers.forEach(answer => {
+        const qid = answer.id;
+        const key = answer.answer || '__empty__';
+        summary.byQuestion[qid] = summary.byQuestion[qid] || {counts:{}, total:0};
+        summary.byQuestion[qid].counts[key] = (summary.byQuestion[qid].counts[key]||0) + 1;
+        summary.byQuestion[qid].total += 1;
+      });
+    });
+    return summary;
+  }
+
   function populateSelectWithImages(select, list){
     if(!select) return;
     const current = select.value;
@@ -735,10 +760,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
     saveAggregated(store);
   }
 
-  function renderAdminResults(){
+  async function renderAdminResults(){
     if(!resultsContainer) return;
-    const agg = loadAggregated();
     resultsContainer.innerHTML = '';
+    const agg = isFirebaseEnabled() ? await loadFirebaseAggregated() : loadAggregated();
     // participants summary at top
     const participants = (agg.respondents || []);
     if(participantsList) participantsList.innerHTML = participants.length ? `<strong>Participants (${participants.length}):</strong> ${participants.join(', ')}` : '<em>Aucun participant pour l\'instant</em>';
