@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
   }
 
-  initApp();
+  const initAppPromise = initApp();
 
   // option editor helpers (advanced options)
   function createOptionRow(opt){
@@ -889,8 +889,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if(logoutBtn) logoutBtn.style.display = flag ? '' : 'none';
   }
 
-  // restore admin state if present
-  if(isAdmin()) setMode('admin'); else setMode('public');
+  // restore admin state after questions are loaded
+  initAppPromise.then(()=>{
+    if(isAdmin()) setMode('admin'); else setMode('public');
+  }).catch(err => {
+    console.warn('initApp failed', err);
+    if(isAdmin()) setMode('admin'); else setMode('public');
+  });
 
   if(importFile) importFile.addEventListener('change', (ev)=>{
     const f = ev.target.files && ev.target.files[0];
