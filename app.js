@@ -38,53 +38,51 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const addOptionBtn = document.getElementById('addOptionBtn');
 
   let localImageList = [];
-  const BACKEND_BASE = '/api';
+  let firebaseDb = null;
+  let firebaseEnabled = false;
 
   function setStatusMessage(message){
     const statusEl = document.getElementById('statusMessage');
-    if(statusEl) statusEl.textContent = message;
+    if(statusEl) statusEl.textContent = message || '';
   }
 
-  async function requestJson(path, options = {}){
-    const res = await fetch(path, options);
-    if(!res.ok){
-      const text = await res.text();
-      throw new Error(`${res.status} ${res.statusText}: ${text}`);
+  function initFirebase(){
+    const config = window.FIREBASE_CONFIG || null;
+    if(!config || typeof firebase === 'undefined' || !firebase.firestore) return;
+    try{
+      firebase.initializeApp(config);
+      firebaseDb = firebase.firestore();
+      firebaseEnabled = true;
+    }catch(err){
+      console.warn('Firebase init failed', err);
+      firebaseEnabled = false;
     }
-    return res.json();
   }
 
-  async function loadRemoteQuestions(){
-    return requestJson(`${BACKEND_BASE}/questions`);
+  function isFirebaseEnabled(){
+    return firebaseEnabled && firebaseDb;
   }
 
-  async function loadRemoteResponses(){
-    return requestJson(`${BACKEND_BASE}/responses`);
-  }
-
-  async function saveRemoteResponse(payload){
-    return requestJson(`${BACKEND_BASE}/responses`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
+  function saveQuestionToFirebase(item){
+    if(!isFirebaseEnabled()) return Promise.resolve();
+    return firebaseDb.collection('questions').doc(item.id).set({
+      ...item,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   }
 
-  async function saveRemoteQuestion(item){
-    const secret = sessionStorage.getItem('guildou:adminSecret') || '';
-    return requestJson(`${BACKEND_BASE}/questions`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'x-admin-secret': secret},
-      body: JSON.stringify(item)
+  function saveResponseToFirebase(resp){
+    if(!isFirebaseEnabled()) return Promise.resolve();
+    return firebaseDb.collection('responses').doc(resp.id).set({
+      ...resp,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   }
 
-  async function deleteRemoteQuestion(id){
-    const secret = sessionStorage.getItem('guildou:adminSecret') || '';
-    return requestJson(`${BACKEND_BASE}/questions?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: {'x-admin-secret': secret}
-    });
+  async function loadFirebaseQuestions(){
+    if(!isFirebaseEnabled()) return [];
+    const snapshot = await firebaseDb.collection('questions').orderBy('createdAt', 'desc').get();
+    return snapshot.docs.map(doc => doc.data());
   }
 
   function populateSelectWithImages(select, list){
@@ -273,19 +271,25 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   let data = [];
   async function initApp(){
-    try{
-      const remoteQuestions = await loadRemoteQuestions();
-      if(Array.isArray(remoteQuestions) && remoteQuestions.length){
-        data = remoteQuestions;
-        setStatusMessage('Questions chargées depuis le serveur partagé.');
-      } else {
+    initFirebase();
+    if(isFirebaseEnabled()){
+      try{
+        const remoteQuestions = await loadFirebaseQuestions();
+        if(Array.isArray(remoteQuestions) && remoteQuestions.length){
+          data = remoteQuestions;
+          setStatusMessage('Questions chargées depuis Firebase.');
+        } else {
+          data = loadData();
+          setStatusMessage('');
+        }
+      } catch (error) {
+        console.warn('Firebase questions unavailable', error);
         data = loadData();
-        setStatusMessage('Aucune question distante, utilisation locale.');
+        setStatusMessage('');
       }
-    } catch (error) {
-      console.warn('Remote questions unavailable', error);
+    } else {
       data = loadData();
-      setStatusMessage('Mode hors-ligne : stockage local uniquement.');
+      setStatusMessage('');
     }
     renderList(data);
 
@@ -367,10 +371,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
     const idx = data.findIndex(x=>x.id===id);
     if(idx>=0) data[idx]=item; else data.unshift(item);
-    // try saving, handle quota errors gracefully
+    // try saving local data and sync to Firebase when available
     try{
       saveData(data);
       renderList(data);
+      saveQuestionToFirebase(item).catch(()=>{});
     }catch(err){
       // localStorage quota exceeded -> try removing media and retry
       if(err && (err.name === 'QuotaExceededError' || err.code === 22 || err.code === 1014)){
@@ -402,7 +407,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     mediaDataUrl = '';
     if(qMediaUrl) qMediaUrl.value = '';
     if(qMediaFile) qMediaFile.value = '';
-    saveRemoteQuestion(item).catch(()=>{});
+    saveQuestionToFirebase(item).catch(()=>{});
   });
 
   resetBtn.addEventListener('click', ()=>{ form.reset(); qId.value=''; });
@@ -440,7 +445,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
       data = data.filter(x=>x.id!==id);
       saveData(data);
       renderList(data);
-      deleteRemoteQuestion(id).catch(()=>{});
+      // if Firebase is enabled, questions will be synced there as well
+      if(isFirebaseEnabled()){
+        firebaseDb.collection('questions').doc(id).delete().catch(()=>{});
+      }
     }
   });
 
@@ -700,7 +708,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const all = loadResponses(); all.unshift(resp); saveResponses(all);
     // update results aggregation store
     updateAggregatedResults(aggregated, respondent);
-    saveRemoteResponse(resp).catch(()=>{});
+    saveResponseToFirebase(resp).catch(()=>{});
     publicForm.reset(); showModal('Merci', 'Réponses enregistrées.');
     // refresh admin results if visible
     if(resultsPanel && resultsPanel.style.display !== 'none') renderAdminResults();

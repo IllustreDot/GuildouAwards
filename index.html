@@ -27,7 +27,7 @@
           <!-- admin controls removed per request -->
         </nav>
       </div>
-      <div id="statusMessage" class="status-message">Chargement...</div>
+      <div id="statusMessage" class="status-message"></div>
     </header>
 
     <main class="container layout">
@@ -133,6 +133,15 @@
       <div class="container">© Guildou Awards — Prototype</div>
     </footer>
 
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script>
+      window.FIREBASE_CONFIG = null;
+      // Pour activer le stockage partagé, remplace null ci-dessus par la config Firebase de ton projet :
+      // {
+      //   apiKey: '...', authDomain: '...', projectId: '...', storageBucket: '...', messagingSenderId: '...', appId: '...'
+      // }
+    </script>
     <script src="app.js"></script>
     <script src="https://unpkg.com/three@0.154.0/build/three.min.js"></script>
     <script src="bg.js"></script>
