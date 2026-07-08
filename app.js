@@ -38,6 +38,60 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const addOptionBtn = document.getElementById('addOptionBtn');
 
   let localImageList = [];
+  const BACKEND_BASE = '/api';
+
+  function setStatusMessage(message){
+    const statusEl = document.getElementById('statusMessage');
+    if(statusEl) statusEl.textContent = message;
+  }
+
+  function getAdminSecret(){
+    return sessionStorage.getItem('guildou:adminSecret') || '';
+  }
+
+  async function requestApi(path, options = {}){
+    const res = await fetch(path, options);
+    if(!res.ok){
+      const text = await res.text();
+      throw new Error(`${res.status} ${res.statusText}: ${text}`);
+    }
+    return res.json();
+  }
+
+  async function fetchRemoteQuestions(){
+    return requestApi(`${BACKEND_BASE}/questions`);
+  }
+
+  async function fetchRemoteResponses(raw = false){
+    return requestApi(`${BACKEND_BASE}/responses${raw ? '?raw=true' : ''}`);
+  }
+
+  async function postRemoteResponse(payload){
+    return requestApi(`${BACKEND_BASE}/responses`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+  }
+
+  async function postRemoteQuestion(item){
+    const secret = getAdminSecret();
+    if(!secret) throw new Error('Admin secret missing');
+    return requestApi(`${BACKEND_BASE}/questions`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'x-admin-secret': secret},
+      body: JSON.stringify(item)
+    });
+  }
+
+  async function deleteRemoteQuestion(id){
+    const secret = getAdminSecret();
+    if(!secret) throw new Error('Admin secret missing');
+    return requestApi(`${BACKEND_BASE}/questions?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: {'x-admin-secret': secret}
+    });
+  }
 
   function populateSelectWithImages(select, list){
     if(!select) return;
@@ -179,6 +233,42 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }).catch(()=>[]);
   }
 
+  async function loadData(){
+    try{
+      const remoteQuestions = await fetchRemoteQuestions();
+      if(Array.isArray(remoteQuestions)){
+        setStatusMessage('Questions chargées depuis le serveur distant.');
+        return remoteQuestions;
+      }
+    }catch(err){
+      console.warn('Remote questions unavailable', err);
+      setStatusMessage('Mode hors-ligne : questions locales utilisées.');
+    }
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){/* ignore */}
+    setStatusMessage('Aucune donnée locale trouvée, questions par défaut utilisées.');
+    return [
+      {id:idForNow(),title:'Qui a oublié le pull de raid ?',type:'choice',choices:['Le pull catastrophe du dimanche soir.','Personne']},
+      {id:idForNow(),title:'Meilleure excuse pour wipe',type:'choice',choices:['Lag','Erreur de strat','Autre']}
+    ];
+  }
+
+  async function loadRemoteResultsSummary(){
+    try{
+      const result = await fetchRemoteResponses();
+      if(result && result.summary){
+        setStatusMessage('Résultats distants chargés.');
+        return result.summary;
+      }
+    }catch(err){
+      console.warn('Remote results unavailable', err);
+      setStatusMessage('Résultats locaux utilisés.');
+    }
+    return null;
+  }
+
   function loadManifestImages(){
     return fetch('img/manifest.json?t=' + Date.now(), {cache:'no-store'}).then(r=>{
       if(!r.ok) return [];
@@ -223,17 +313,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const MAX_MEDIA_BYTES = 10 * 1024 * 1024; // 10 MB
   const MAX_DATAURL_CHARS = 14 * 1024 * 1024; // conservative char length for data URLs
 
-  let data = loadData();
-  renderList(data);
+  let data = [];
+  initApp();
 
-  // load local image list from manifest or GitHub when possible
-  if(qMediaSelect){
-    refreshLocalImages();
-    qMediaSelect.addEventListener('change', ()=>{
-      const v = qMediaSelect.value;
-      if(v){ qMediaUrl.value = v; }
-    });
-    if(refreshImgListBtn){ refreshImgListBtn.addEventListener('click', refreshLocalImages); }
+  async function initApp(){
+    data = await loadData();
+    renderList(data);
+    if(qMediaSelect){
+      refreshLocalImages();
+      qMediaSelect.addEventListener('change', ()=>{
+        const v = qMediaSelect.value;
+        if(v){ qMediaUrl.value = v; }
+      });
+      if(refreshImgListBtn){ refreshImgListBtn.addEventListener('click', refreshLocalImages); }
+    }
   }
 
   // option editor helpers (advanced options)
@@ -337,6 +430,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
     mediaDataUrl = '';
     if(qMediaUrl) qMediaUrl.value = '';
     if(qMediaFile) qMediaFile.value = '';
+    postRemoteQuestion(item).then(()=>{
+      setStatusMessage('Question enregistrée sur le serveur distant.');
+    }).catch(err=>{
+      console.warn('Enregistrement distant échoué', err);
+      setStatusMessage('Impossible d\'enregistrer la question sur le serveur distant. Elle reste disponible localement.');
+    });
   });
 
   resetBtn.addEventListener('click', ()=>{ form.reset(); qId.value=''; });
@@ -374,6 +473,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
       data = data.filter(x=>x.id!==id);
       saveData(data);
       renderList(data);
+      deleteRemoteQuestion(id).then(()=>{
+        setStatusMessage('Question supprimée sur le serveur distant.');
+      }).catch(err=>{
+        console.warn('Suppression distante échouée', err);
+        setStatusMessage('Suppression distante impossible. La question reste supprimée localement.');
+      });
     }
   });
 
@@ -445,7 +550,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const pass = prompt('Mot de passe admin :');
     if(pass === null) return; // cancel
     const stored = localStorage.getItem('guildou:adminPass') || 'guildou';
-    if(pass === stored){ setAdmin(true); setMode('admin'); }
+    if(pass === stored){ setAdmin(true, pass); setMode('admin'); }
     else showModal('Erreur', 'Mot de passe incorrect');
   });
   modePublic.addEventListener('click', ()=>setMode('public'));
@@ -631,6 +736,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
     // update results aggregation store
     updateAggregatedResults(aggregated, respondent);
     publicForm.reset(); showModal('Merci', 'Réponses enregistrées.');
+    postRemoteResponse(resp).then(()=>{
+      setStatusMessage('Les réponses ont été envoyées au serveur distant.');
+      if(resultsPanel && resultsPanel.style.display !== 'none') renderAdminResults();
+    }).catch(err=>{
+      console.warn('Envoi à distance échoué', err);
+      setStatusMessage('Impossible d\'envoyer les réponses au serveur distant. Elles restent stockées localement.');
+    });
     // refresh admin results if visible
     if(resultsPanel && resultsPanel.style.display !== 'none') renderAdminResults();
   });
@@ -656,11 +768,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
     saveAggregated(store);
   }
 
-  function renderAdminResults(){
+  async function renderAdminResults(){
     if(!resultsContainer) return;
-    const agg = loadAggregated();
     resultsContainer.innerHTML = '';
-    // participants summary at top
+    const remoteSummary = await loadRemoteResultsSummary();
+    const agg = remoteSummary || loadAggregated();
     const participants = (agg.respondents || []);
     if(participantsList) participantsList.innerHTML = participants.length ? `<strong>Participants (${participants.length}):</strong> ${participants.join(', ')}` : '<em>Aucun participant pour l\'instant</em>';
     if(!data || !data.length){ resultsContainer.innerHTML = '<div>Aucune question.</div>'; return; }
@@ -735,8 +847,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // initialize default mode = admin
   // admin session helpers
   function isAdmin(){ return sessionStorage.getItem('guildou:admin') === '1'; }
-  function setAdmin(flag){
-    if(flag) sessionStorage.setItem('guildou:admin','1'); else sessionStorage.removeItem('guildou:admin');
+  function setAdmin(flag, secret){
+    if(flag){
+      sessionStorage.setItem('guildou:admin','1');
+      if(secret) sessionStorage.setItem('guildou:adminSecret', secret);
+    } else {
+      sessionStorage.removeItem('guildou:admin');
+      sessionStorage.removeItem('guildou:adminSecret');
+    }
     if(logoutBtn) logoutBtn.style.display = flag ? '' : 'none';
   }
 
@@ -826,12 +944,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   }
 
-  function loadData(){
+  function loadLocalData(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw) return JSON.parse(raw);
     }catch(e){/* ignore */}
-    // seed sample data
     return [
       {id:idForNow(),title:'Qui a oublié le pull de raid ?',type:'choice',choices:['Le pull catastrophe du dimanche soir.','Personne']},
       {id:idForNow(),title:'Meilleure excuse pour wipe',type:'choice',choices:['Lag','Erreur de strat','Autre']}

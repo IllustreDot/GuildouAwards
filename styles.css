@@ -29,6 +29,7 @@ header, main, footer, .panel, .container, .site-header, .site-footer{position:re
 .brand h1{margin:0;font-size:18px;color:#fff}
 .sub{font-size:12px;color:rgba(255,255,255,0.5)}
 .site-header{padding:12px 0}
+.status-message{margin-top:8px;font-size:13px;color:var(--muted);}
 .top-actions{display:flex;gap:8px;align-items:center}
 .mode-toggle{display:inline-flex;background:transparent;border-radius:14px;gap:6px;padding:4px}
 .mode-toggle .btn{padding:6px 10px;font-size:13px;background:rgba(255,255,255,0.08);color:var(--muted);border:none;border-radius:8px;transition:background .2s ease,color .2s ease}
