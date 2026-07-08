@@ -1,0 +1,9 @@
+{
+  "name": "guildou-awards",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Guildou Awards with a lightweight Node backend for shared responses",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
