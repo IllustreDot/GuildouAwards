@@ -318,7 +318,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         const remoteQuestions = await loadFirebaseQuestions();
         if(Array.isArray(remoteQuestions) && remoteQuestions.length){
           data = remoteQuestions;
-          setStatusMessage('Questions chargées depuis Firebase.');
+          setStatusMessage('');
         } else {
           data = loadData();
           setStatusMessage('');
