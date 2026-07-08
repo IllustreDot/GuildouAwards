@@ -42,8 +42,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   let firebaseEnabled = false;
 
   function setStatusMessage(message){
-    const statusEl = document.getElementById('statusMessage');
-    if(statusEl) statusEl.textContent = message || '';
+    if(message){
+      console.log('GuildouAwards status:', message);
+    }
   }
 
   function initFirebase(){
@@ -318,6 +319,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         const remoteQuestions = await loadFirebaseQuestions();
         if(Array.isArray(remoteQuestions) && remoteQuestions.length){
           data = remoteQuestions;
+          setStatusMessage('Questions chargées depuis Firebase.');
         } else {
           data = loadData();
           setStatusMessage('');
