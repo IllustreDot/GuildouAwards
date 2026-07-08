@@ -110,7 +110,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if(!Array.isArray(resp.answers)) return;
         resp.answers.forEach(answer => {
           const qid = answer.id;
-          const key = answer.answer || '__empty__';
+          const raw = answer.answer;
+          const key = raw === null || raw === undefined || raw === '' ? '__empty__' : String(raw);
           summary.byQuestion[qid] = summary.byQuestion[qid] || {counts:{}, total:0};
           summary.byQuestion[qid].counts[key] = (summary.byQuestion[qid].counts[key]||0) + 1;
           summary.byQuestion[qid].total += 1;
@@ -737,11 +738,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const aggregated = {};
     data.forEach(it=>{
       const key = 'q_'+it.id;
-      const val = (formData.get(key)||'').toString();
+      const rawVal = formData.get(key);
+      const val = rawVal === null ? '' : rawVal.toString();
       answers.push({id:it.id, question:it.title, answer:val});
       // count by index (val should be index for choices)
       if(!aggregated[it.id]) aggregated[it.id] = {};
-      const k = val || '__empty__';
+      const k = val === '' ? '__empty__' : val;
       aggregated[it.id][k] = (aggregated[it.id][k]||0) + 1;
     });
     // store full submission (without linking respondent to answers in results display)
