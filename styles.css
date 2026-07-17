@@ -205,16 +205,20 @@ input[type=text],input[type=search],select,textarea{width:100%;padding:10px;bord
 @media (max-width:920px){
   .public-panel.visible{padding:18px}
   .survey-q{grid-template-columns:1fr;gap:12px}
-  .survey-media{width:100%;height:auto;min-height:220px;aspect-ratio:16/9;max-height:72vh}
-  /* Make sliders and slides flow naturally on small screens
-    and give videos a comfortable viewing area (16:9). */
-  .survey-media .slider{height:100%;min-height:260px}
+  /* Larger slider area on mobile while keeping controls inside */
+  .survey-media{width:100%;height:auto;min-height:320px;aspect-ratio:16/9;max-height:82vh}
+  .survey-media .slider{height:100%;min-height:320px;padding-bottom:64px;box-sizing:border-box;overflow:hidden}
   .survey-media .slides{position:relative;height:100%}
   .survey-media .slide{position:relative;display:none;opacity:1;visibility:visible;transition:none;inset:auto;height:100%}
   .survey-media .slide.active{display:flex;align-items:center;justify-content:center;height:100%}
   .survey-media .slide img,
   .survey-media .slide video,
-  .survey-media .slide iframe{max-height:70vh;max-width:100%;width:100%;height:100%;object-fit:contain}
+  .survey-media .slide iframe{max-height:78vh;max-width:100%;width:100%;height:100%;object-fit:contain}
+
+  /* Keep slider controls inside the frame and scale them for touch */
+  .survey-media .slider-controls{bottom:12px;padding:0 12px;gap:8px}
+  .survey-media .slider-btn{min-width:40px;min-height:40px;padding:8px;font-size:16px}
+  .survey-media .slider-caption{font-size:14px;padding:8px 12px;max-width:calc(100% - 120px)}
 
   /* Better stacking for option editor on small screens */
   .option-row{flex-direction:column;align-items:stretch}
