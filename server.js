@@ -110,7 +110,7 @@ function handleApi(req, res, urlObj) {
     }
 
     if (req.method === 'POST') {
-      const secret = process.env.ADMIN_SECRET || 'CS#ga&67';
+      const secret = process.env.ADMIN_SECRET;
       const providedSecret = req.headers['x-admin-secret'];
       if (secret && providedSecret !== secret) {
         sendJson(res, { error: 'Admin secret required' }, 401);
@@ -139,7 +139,7 @@ function handleApi(req, res, urlObj) {
     }
 
     if (req.method === 'DELETE') {
-      const secret = process.env.ADMIN_SECRET || 'CS#ga&67';
+      const secret = process.env.ADMIN_SECRET;
       const providedSecret = req.headers['x-admin-secret'];
       if (secret && providedSecret !== secret) {
         sendJson(res, { error: 'Admin secret required' }, 401);
