@@ -208,9 +208,9 @@ input[type=text],input[type=search],select,textarea{width:100%;padding:10px;bord
   .survey-q{grid-template-columns:1fr;gap:12px}
   .survey-media{width:100%;height:auto;min-height:200px}
   /* Ensure slides render normally on small/medium screens (not absolutely positioned) */
-  .slides{position:relative;height:auto}
-  .slide{position:relative;opacity:1;visibility:visible;display:none}
-  .slide.active{display:block}
+  .survey-media .slides{position:relative;height:auto}
+  .survey-media .slide{position:relative;opacity:1;visibility:visible;display:none}
+  .survey-media .slide.active{display:block}
   .survey-media .slide > img, .survey-media .slide > video, .survey-media .slide > iframe{max-height:60vh}
 }
 
