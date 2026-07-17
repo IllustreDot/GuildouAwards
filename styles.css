@@ -205,17 +205,16 @@ input[type=text],input[type=search],select,textarea{width:100%;padding:10px;bord
 @media (max-width:920px){
   .public-panel.visible{padding:18px}
   .survey-q{grid-template-columns:1fr;gap:12px}
-  .survey-media{width:100%;height:auto}
+  .survey-media{width:100%;height:auto;min-height:220px;aspect-ratio:16/9;max-height:72vh}
   /* Make sliders and slides flow naturally on small screens
-     instead of relying on absolute positioning and 100% heights
-     which can collapse when the parent has auto height. */
-  .survey-media .slider{height:auto;min-height:160px}
-  .survey-media .slides{position:relative;height:auto}
-  .survey-media .slide{position:relative;display:none;opacity:1;visibility:visible;transition:none;inset:auto}
-  .survey-media .slide.active{display:flex;align-items:center;justify-content:center}
+    and give videos a comfortable viewing area (16:9). */
+  .survey-media .slider{height:100%;min-height:260px}
+  .survey-media .slides{position:relative;height:100%}
+  .survey-media .slide{position:relative;display:none;opacity:1;visibility:visible;transition:none;inset:auto;height:100%}
+  .survey-media .slide.active{display:flex;align-items:center;justify-content:center;height:100%}
   .survey-media .slide img,
   .survey-media .slide video,
-  .survey-media .slide iframe{max-height:60vh;max-width:100%;width:auto;height:auto}
+  .survey-media .slide iframe{max-height:70vh;max-width:100%;width:100%;height:100%;object-fit:contain}
 
   /* Better stacking for option editor on small screens */
   .option-row{flex-direction:column;align-items:stretch}
