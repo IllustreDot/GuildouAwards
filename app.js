@@ -558,28 +558,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
     requestAnimationFrame(adjustPublicPanelSpacing);
   }
 
-  modeAdmin.addEventListener('click', async ()=>{
+  modeAdmin.addEventListener('click', ()=>{
     if(isAdmin()) return setMode('admin');
     const pass = prompt('Mot de passe admin :');
     if(pass === null) return; // cancel
-    try{
-      const res = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pass })
-      });
-      const json = await res.json().catch(()=>({}));
-      if(res.ok && json && json.token){
-        sessionStorage.setItem('guildou:adminToken', json.token);
-        setAdmin(true);
-        setMode('admin');
-      } else {
-        showModal('Erreur', json && json.error ? json.error : 'Mot de passe incorrect');
-      }
-    }catch(err){
-      console.error('Auth request failed', err);
-      showModal('Erreur', 'Impossible de contacter le serveur');
-    }
+    const stored = localStorage.getItem('guildou:adminPass') || 'guildou';
+    if(pass === stored){
+      sessionStorage.setItem('guildou:adminSecret', pass);
+      setAdmin(true);
+      setMode('admin');
+    } else showModal('Erreur', 'Mot de passe incorrect');
   });
   modePublic.addEventListener('click', ()=>setMode('public'));
 
