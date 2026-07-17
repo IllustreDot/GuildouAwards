@@ -178,8 +178,7 @@ input[type=text],input[type=search],select,textarea{width:100%;padding:10px;bord
 /* Layout for each survey question: content + optional media below on smaller breakpoints */
 .survey-q{display:grid;grid-template-columns:1fr;gap:18px;align-items:start;justify-content:center;max-width:1240px;margin:0 auto;padding:6px 0}
 .survey-content{width:100%;min-width:0}
-/* Use a flexible height for media: tall on desktop (vh) but not forcing huge fixed minimums */
-.survey-media{width:100%;max-width:100%;height:70vh;min-height:240px;max-height:80vh;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);display:flex;align-items:center;justify-content:center;padding:8px;position:relative;}
+.survey-media{width:100%;max-width:100%;height:70vh;min-height:560px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);display:flex;align-items:center;justify-content:center;padding:8px;position:relative;}
 .survey-media .slider{width:100%;height:100%;position:relative;}
 .survey-media .slide{width:100%;height:100%;flex:0 0 100%;}
 .survey-media .slide > img,
@@ -206,23 +205,23 @@ input[type=text],input[type=search],select,textarea{width:100%;padding:10px;bord
 @media (max-width:920px){
   .public-panel.visible{padding:18px}
   .survey-q{grid-template-columns:1fr;gap:12px}
-  .survey-media{width:100%;height:auto;min-height:200px}
-  /* Ensure slides render normally on small/medium screens (not absolutely positioned) */
+  .survey-media{width:100%;height:auto}
+  /* Make sliders and slides flow naturally on small screens
+     instead of relying on absolute positioning and 100% heights
+     which can collapse when the parent has auto height. */
+  .survey-media .slider{height:auto;min-height:160px}
   .survey-media .slides{position:relative;height:auto}
-  .survey-media .slide{position:relative;opacity:1;visibility:visible;display:none}
-  .survey-media .slide.active{display:block}
-  .survey-media .slide > img, .survey-media .slide > video, .survey-media .slide > iframe{max-height:60vh}
-}
+  .survey-media .slide{position:relative;display:none;opacity:1;visibility:visible;transition:none;inset:auto}
+  .survey-media .slide.active{display:flex;align-items:center;justify-content:center}
+  .survey-media .slide img,
+  .survey-media .slide video,
+  .survey-media .slide iframe{max-height:60vh;max-width:100%;width:auto;height:auto}
 
-/* Make slider behave naturally on small screens: avoid absolute positioning that needs a fixed parent height */
-@media (max-width:600px){
-  .survey-media{height:auto;min-height:140px;padding:6px}
-  .survey-media .slider{height:auto}
-  .slides{position:relative;height:auto}
-  .slide{position:relative;opacity:1;visibility:visible;display:none;position:relative}
-  .slide.active{display:block}
-  .slide img, .slide video, .slide iframe{max-height:60vh}
-  .slider-controls{bottom:6px;padding:0 8px}
+  /* Better stacking for option editor on small screens */
+  .option-row{flex-direction:column;align-items:stretch}
+  .option-row .opt-media{flex:1 1 auto;width:100%;margin-top:8px}
+  .option-row .opt-media input[type=text]{flex:1 1 auto;width:100%}
+  .option-row .opt-media select{flex:0 0 auto;width:100%}
 }
 
 
