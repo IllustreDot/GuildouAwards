@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { URL } = require('url');
 
 const PORT = process.env.PORT || 3000;
@@ -9,6 +10,42 @@ const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, 'data');
 const QUESTIONS_FILE = path.join(DATA_DIR, 'questions.json');
 const RESPONSES_FILE = path.join(DATA_DIR, 'responses.json');
+
+// Load .env file if present (simple loader, no external deps)
+try {
+  const envPath = path.join(ROOT, '.env');
+  if (fs.existsSync(envPath)) {
+    const envRaw = fs.readFileSync(envPath, 'utf8');
+    envRaw.split(/\r?\n/).forEach(line => {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!m) return;
+      const key = m[1];
+      let val = m[2] || '';
+      if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
+      if (typeof process.env[key] === 'undefined') process.env[key] = val;
+    });
+  }
+} catch (err) {
+  console.warn('Failed to load .env', err);
+}
+
+// In-memory admin token store: token -> expiry timestamp (ms)
+const adminTokens = new Map();
+function generateAdminToken() {
+  return crypto.randomBytes(24).toString('hex');
+}
+function cleanupTokens() {
+  const now = Date.now();
+  for (const [t, exp] of adminTokens.entries()) if (exp <= now) adminTokens.delete(t);
+}
+setInterval(cleanupTokens, 60 * 1000);
+function isValidAdminToken(token) {
+  if (!token) return false;
+  const exp = adminTokens.get(token);
+  if (!exp) return false;
+  if (exp <= Date.now()) { adminTokens.delete(token); return false; }
+  return true;
+}
 
 function ensureDataFiles() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -35,7 +72,7 @@ function sendJson(res, payload, statusCode = 200) {
     'Cache-Control': 'no-store',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, x-admin-secret'
+    'Access-Control-Allow-Headers': 'Content-Type, x-admin-secret, x-admin-token'
   });
   res.end(JSON.stringify(payload));
 }
@@ -97,6 +134,39 @@ function serveStatic(req, res, pathname) {
 function handleApi(req, res, urlObj) {
   const pathname = urlObj.pathname;
 
+  // helper: check admin via secret or token header
+  function isAdminRequest(r) {
+    const secret = process.env.ADMIN_SECRET;
+    if (!secret) return false;
+    const providedSecret = r.headers['x-admin-secret'];
+    if (providedSecret && providedSecret === secret) return true;
+    const providedToken = r.headers['x-admin-token'];
+    if (providedToken && isValidAdminToken(providedToken)) return true;
+    return false;
+  }
+
+  // Auth endpoint: POST { password }
+  if (pathname === '/api/auth' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const pw = payload && payload.password ? String(payload.password) : '';
+        const secret = process.env.ADMIN_SECRET;
+        if (!secret) { sendJson(res, { error: 'Server admin secret not configured' }, 500); return; }
+        if (pw !== secret) { sendJson(res, { error: 'Invalid password' }, 401); return; }
+        const token = generateAdminToken();
+        const ttl = 60 * 60 * 1000; // 1h
+        adminTokens.set(token, Date.now() + ttl);
+        sendJson(res, { token });
+      } catch (err) {
+        sendJson(res, { error: 'Invalid JSON body' }, 400);
+      }
+    });
+    return;
+  }
+
   if (pathname === '/api/questions') {
     if (req.method === 'OPTIONS') {
       sendJson(res, { ok: true }, 204);
@@ -110,12 +180,7 @@ function handleApi(req, res, urlObj) {
     }
 
     if (req.method === 'POST') {
-      const secret = process.env.ADMIN_SECRET;
-      const providedSecret = req.headers['x-admin-secret'];
-      if (secret && providedSecret !== secret) {
-        sendJson(res, { error: 'Admin secret required' }, 401);
-        return;
-      }
+      if (!isAdminRequest(req)) { sendJson(res, { error: 'Admin secret required' }, 401); return; }
 
       let body = '';
       req.on('data', chunk => { body += chunk; });
@@ -139,12 +204,7 @@ function handleApi(req, res, urlObj) {
     }
 
     if (req.method === 'DELETE') {
-      const secret = process.env.ADMIN_SECRET;
-      const providedSecret = req.headers['x-admin-secret'];
-      if (secret && providedSecret !== secret) {
-        sendJson(res, { error: 'Admin secret required' }, 401);
-        return;
-      }
+      if (!isAdminRequest(req)) { sendJson(res, { error: 'Admin secret required' }, 401); return; }
       const id = urlObj.searchParams.get('id');
       if (!id) {
         sendJson(res, { error: 'id is required' }, 400);
