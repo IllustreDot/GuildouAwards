@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   async function loadFirebaseQuestions(){
     if(!isFirebaseEnabled()) return [];
-    const snapshot = await firebaseDb.collection('questions').orderBy('createdAt', 'desc').get();
+    const snapshot = await firebaseDb.collection('questions').orderBy('createdAt', 'asc').get();
     return snapshot.docs.map(doc => doc.data());
   }
 
@@ -413,7 +413,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
 
     const idx = data.findIndex(x=>x.id===id);
-    if(idx>=0) data[idx]=item; else data.unshift(item);
+    if(idx>=0) data[idx]=item; else data.push(item);
     // try saving local data and sync to Firebase when available
     try{
       saveData(data);
